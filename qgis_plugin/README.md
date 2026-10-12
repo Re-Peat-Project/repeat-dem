@@ -4,13 +4,14 @@ A QGIS port of `demnas_dtm.py`, split into stages you run from the Processing to
 
 | # | Algorithm | In | Saved to the output folder |
 |---|---|---|---|
+| 0 | **Download DEMNAS from BIG** (optional) | polygon or extent + your Ina-Geoportal link | `demnas_clipped.tif`, `tiles/` |
 | 1 | **Prepare inputs** | DEMNAS tiles, AOI, optional canal/settlement layers | `dem_utm.tif`, `landcover.tif`, `canopy_height.tif`, `aoi_mask.tif`, `vector_mask.tif`, `prepare_report.json` |
 | 5 | **Fetch ICESat-2 / GEDI points** (optional) | AOI | `ground_points_raw.gpkg` |
 | 2 | **Calibrate against ground points** | points layer + rasters from 1 | `ground_points.gpkg` (with `exclude_reason`, `split`), `calibration.json`, `datum_diagnostics.json` |
 | 3 | **Correct and smooth** | rasters from 1, optional `calibration.json` | `dtm_smooth.tif`, `dtm_corrected.tif`, `dtm_prior_k.tif`, `dtm_residual.tif`, `correction_m.tif`, `k_factor.tif`, `excluded_mask.tif`, `run_report.json` |
 | 4 | **Validate surfaces** | `ground_points.gpkg` + any rasters | `validation.csv`, `ground_points_errors.gpkg` |
 
-Typical order: 1, then (5 or your own points), 2, 3, 4. You can skip 2 and 5 (placeholder k is then used, and the report says so), or stop after 1 and 3.
+Typical order: 0 (only if you do not have the tiles yet), 1, then (5 or your own points), 2, 3, 4. You can skip 2 and 5 (placeholder k is then used, and the report says so), or stop after 1 and 3.
 
 ## Output folders and masks
 
@@ -29,6 +30,7 @@ Or copy the `demnas_dtm_qgis` folder into the `python/plugins` folder of your QG
 
 | Algorithm | Needs besides what QGIS ships |
 |---|---|
+| 0 Download DEMNAS | nothing |
 | 1 Prepare inputs | nothing |
 | 3 Correct and smooth | scipy |
 | 4 Validate | pandas |
@@ -36,6 +38,10 @@ Or copy the `demnas_dtm_qgis` folder into the `python/plugins` folder of your QG
 | 5 Fetch points | scipy, pandas, geopandas, shapely, sliderule |
 
 Each algorithm checks first and names what is missing; the plugin itself always loads. Without sliderule, skip algorithm 5 and give algorithm 2 your own points (CSV, survey layer, an earlier export).
+
+## Downloading DEMNAS (algorithm 0)
+
+Same logic as `script/qgis_demnas_clip_download_helper.py` (which stays as it was), inside the plugin. You paste one fresh download link from the Ina-Geoportal (log in at tanahair.indonesia.go.id, open the DEMNAS download map, click any tile, copy the URL it opens); its token lasts about an hour and is reused for every tile. The tiles that touch the area are found from BIG's tile index, downloaded to `<output>/tiles` (or a folder you choose, which is reused on the next run), mosaicked, given EPSG:4326 (the tiles ship without a CRS) and clipped. The area is widened by 500 m by default so algorithm 1's own margin is not empty; set the buffer to 0 for the exact area. Feed `demnas_clipped.tif` to algorithm 1 as the DEM and leave the target CRS empty (algorithm 1 reprojects to UTM). The link is a credential: it is kept in QGIS's Processing history.
 
 ## Options
 
@@ -66,6 +72,8 @@ Basic parameters are shown; everything else is under **Advanced Parameters**. Ev
 | 2 calibrate, fed the run's cached ICESat-2 points | identical split, exclusion reasons and ground heights; same k and bias per class |
 | 4 validate | identical table (n, bias, RMSE, MAE, NMAD) for all four surfaces |
 | 1 prepare inputs, local land cover and canopy rasters | same grid (2009 x 1998 px); land cover and canopy identical; DEM max difference 5e-7 m |
+
+Algorithm 0 (`tests/download_with_fake_server.py`, passes on QGIS 3.44 and 4.2.3) runs against a local fake of BIG's tile index and download endpoints: worker-thread download of two CRS-less tiles, CRS assignment, clip (values identical to the source DEM), tile reuse with no new downloads, a clear error for an HTML page instead of a tile and for a bad link, and chaining into algorithm 1 (same DEM as the CLI's within 0.25 m at clip edges). **Not tested: BIG's real server with a real token.**
 
 Also checked (QGIS 3.44): the defaults, quadkeys and WorldCover tiles are identical to the CLI's; the YAML/widget precedence; polynomial smoothing; a vector mask; re-running over open layers (clear error, nothing corrupted); on QGIS 4 without scipy/pandas, the provider loads, algorithm 1 runs and algorithms 2 to 4 name what to install; and on QGIS 4, algorithms 1 and 3 run the way the GUI runs them (worker thread via `QgsProcessingAlgRunnerTask`, layers taken from the project by id, results loaded back as valid layers, a second run into the same folder).
 

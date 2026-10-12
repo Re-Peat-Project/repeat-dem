@@ -30,6 +30,7 @@ from qgis.core import QgsApplication  # noqa: E402
 
 app = QgsApplication([], False)
 app.initQgis()
+sys.path.append(os.path.join(QgsApplication.prefixPath(), 'python', 'plugins'))  # for `processing`
 import processing  # noqa: E402
 from processing.core.Processing import Processing  # noqa: E402
 

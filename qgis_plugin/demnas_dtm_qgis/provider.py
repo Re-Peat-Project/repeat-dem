@@ -2,6 +2,7 @@ from qgis.core import QgsProcessingProvider
 
 from .algorithms.calibrate_points import CalibratePoints
 from .algorithms.correct_smooth import CorrectSmooth
+from .algorithms.download_demnas import DownloadDemnas
 from .algorithms.fetch_points import FetchGroundPoints
 from .algorithms.prepare_inputs import PrepareInputs
 from .algorithms.validate_surfaces import ValidateSurfaces
@@ -18,5 +19,5 @@ class DemnasProvider(QgsProcessingProvider):
         return "DEMNAS to DTM: vegetation correction, calibration, smoothing and validation"
 
     def loadAlgorithms(self):
-        for cls in (PrepareInputs, FetchGroundPoints, CalibratePoints, CorrectSmooth, ValidateSurfaces):
+        for cls in (DownloadDemnas, PrepareInputs, FetchGroundPoints, CalibratePoints, CorrectSmooth, ValidateSurfaces):
             self.addAlgorithm(cls())
