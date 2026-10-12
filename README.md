@@ -1,6 +1,8 @@
 # demnas_dtm: DEMNAS to DTM correction, calibration and smoothing
 
-Turns DEMNAS (a surface model: canopy tops in forest) into a ground estimate, calibrates the correction against ICESat-2 (and optionally GEDI) ground heights, and smooths the result to a dome-scale surface for canal block siting. One command runs everything.
+Turns DEMNAS into a ground estimate, calibrates the correction against ICESat-2 (and optionally GEDI) ground heights, and smooths the result to a dome-scale surface for canal block siting. One command runs everything.
+
+DEMNAS is a radar DSM (IFSAR, TerraSAR-X, ALOS PALSAR) blended toward stereo-plotted mass points, so how much canopy it still contains is unknown and varies by area. In our three test sites the fitted canopy factor was far below the 0.8 prior, and the offset to lidar ground differed by site. Published accuracy is RMSE 2.2 to 5.0 m at open-ground control points; our smoothed results are 1.2 to 2.8 m at lidar points in vegetation. See [`docs/demnas-literature.md`](docs/demnas-literature.md) and [`docs/test-run-sebangau.md`](docs/test-run-sebangau.md). Treat `dtm_smooth.tif` as good for dome shape and regional slope, not for decimetre heights. Work is paused pending airborne LiDAR; see [`AGENTS.md`](AGENTS.md) for the plan to resume.
 
 ```
 DEMNAS tiles ─► mosaic, clip to KHG, reproject to UTM
@@ -91,7 +93,7 @@ Land cover classes follow ESA WorldCover codes (10 tree cover, 20 shrubland, 80 
 | `target_res_m` | 8 | Output resolution (DEMNAS native ≈ 8 m) |
 | `target_crs` | auto-utm | UTM zone from the AOI centre (south or north) |
 | `aoi_buffer_m` | 500 | Extra margin so smoothing behaves at the KHG edge |
-| `k_by_class` | 0.8 forest/mangrove, 0.5 shrub, 0.4 wetland, 0.2 grass/crop | Share of canopy height present in the DEM (**placeholder**) |
+| `k_by_class` | 0.8 forest/mangrove, 0.5 shrub, 0.4 wetland, 0.2 grass/crop | Share of canopy height present in the DEM (**placeholder, not supported by data**: fitted tree-cover k was 0.04 to 0.21 at all three test sites, and the prior made two of them worse than the raw DEM) |
 | `bias_by_class` | none | Constant offset per class (m), for later calibration |
 | `corrections.chm_min_m` / `chm_max_m` | 2 / 60 | Canopy below 2 m treated as 0; above 60 m clipped |
 | `mask.landcover_classes` | [80, 50] | Water and built-up excluded from the smoothing input |

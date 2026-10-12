@@ -219,11 +219,38 @@ Searched on 2026-10-08. Entries marked with a dagger were seen only as a search 
 
 - Julzarika, A. and Harintaka (2019). Free global DEM: converting DSM to DTM and its applications. *Int. Arch. Photogramm. Remote Sens. Spatial Inf. Sci.* XLII-4/W16, 319-325. doi 10.5194/isprs-archives-XLII-4-W16-319-2019. Abstract read. DSM from X-SAR, SRTM and TanDEM-X is integrated, referenced to EGM2008 and converted to DTM using canopy tilt angle, vegetation height and a radius around the canopy. Tested on Rote Island, not on peat.
 - Julzarika, A., Aditya, T., Subaryono and Harintaka (2020). Comparison of the latest DTM with DEM Pleiades in monitoring the dynamic peatland. *ISRITI 2020*. doi 10.1109/ISRITI51436.2020.9315410. Abstract read. Palangkaraya-Pulang Pisau peatland, the nearest study area to Sebangau. The DTM is from ALOS PALSAR/PALSAR-2 InSAR and Sentinel DInSAR, referenced to EGM2008. Mean height differences: Pleiades vs DTM 0.923 m, Pleiades vs field GNSS 0.557 m, DTM vs field GNSS 0.705 m.
-- Julzarika, A. Indonesian DEMNAS: DSM or DTM? ResearchGate (2020) (dagger). Directly on point, but the site blocked access, so the content is unread. This is the first thing to obtain.
+- Julzarika, A. and Harintaka (2019). Indonesian DEMNAS: DSM or DTM? *2019 IEEE AGERS*, 31-36. doi 10.1109/AGERS48446.2019.9034351. **Now read in full** (`docs/Indonesian_DEMNAS_DSM_or_DTM.pdf`). DEMNAS is a fusion of IFSAR, TerraSAR-X, ALOS PALSAR and mass points; it is "dominated by DSM" in the South Kalimantan sample and "neither DSM nor DTM" in the Central Java one. Small sample, profile comparison only.
+- Susetyo, D.B. (2023). Vertical accuracy assessment of DEMNAS, SRTM-1 and ASTER GDEM. *Geodesy and Cartography* 49(4). **Read in full** (`docs/susetyo et al.pdf`). Bogor, 60 GPS points: DEMNAS RMSE 4.968 m, LE90 8.172 m. The 8.17 m figure quoted earlier in this section is the LE90, not an RMSE.
+- Susetyo, Lumban-Gaol and Sofian (2018). Prototype of national DEM in Indonesia. *ISPRS Archives* XLII-4. **Read in full.** Describes how the radar DSMs and stereo mass points are merged; RMSE 2.237 m on 142 GCPs in Aceh–North Sumatra.
 - Julzarika's earlier height-model integration work (ALOS PALSAR, X-SAR, SRTM C, ICESat/GLAS) (dagger) reports vertical accuracies of about 1.1 to 2.0 m. Listed from a search summary only.
-- Search summaries also say DEMNAS combines TerraSAR-X, IFSAR, ALOS PALSAR and mass points (dagger), that TerraSAR-X X-band stereo DSMs underestimate forest height by about 27% of canopy height because the signal penetrates the canopy (dagger), and give DEMNAS accuracy figures against GPS (8.17 m) and levelling (11.3 m standard deviation) (dagger) from studies I could not identify. None of these is verified.
+- A summary also said TerraSAR-X X-band stereo DSMs underestimate forest height by about 27% of canopy height (dagger). Not verified.
 
-**Why this matters here.** If DEMNAS is a mosaic of X-band, IFSAR and L-band sources, its canopy penetration and its vertical offset probably differ from tile to tile. That fits our finding that k is near zero and the offset varies, and it suggests testing whether the per-tile source or acquisition date explains the residual. I have not tested it.
+Full notes, accuracy table and consequences are in [`demnas-literature.md`](demnas-literature.md).
+
+**Why this matters here.** DEMNAS is a radar DSM blended toward stereo mass points, with the sensor mix and mass-point density varying by sheet. That fits our finding that k is near zero and the offset varies. The published accuracies (RMSE 2.2 to 5.0 m, all measured at open-ground control points) are in the same range as our smoothed results (1.2 to 2.8 m). I have not tested whether the residual maps to source sheets.
+
+## Relative error from the cached ground points (2026-10-12)
+
+The water-sharing model needs height *differences* over 0.5 to 2 km, not absolute heights. `script/relative_error.py` takes the usable ICESat-2 (and GEDI) points of a run, removes the site-wide median error, and reports the RMS and NMAD of the error difference between point pairs by distance. Surface: smoothed DTM, using the runs `exp_joint` (Sebangau window, ICESat-2), `mendahara_30m` and `bengkalis_30m_gt`.
+
+| Lag (m) | Sebangau RMS / NMAD (m) | Mendahara RMS / NMAD (m) | Bengkalis RMS / NMAD (m) |
+|---|---|---|---|
+| 0–150 | 0.37 / 0.24 | 0.58 / 0.32 | 1.01 / 0.46 |
+| 300–600 | 0.74 / 0.70 | 1.19 / 0.70 | 1.64 / 1.03 |
+| 1000–2000 | 1.16 / 1.06 | 1.88 / 1.12 | 2.55 / 1.68 |
+| 4000–8000 | 1.73 / 1.73 | 2.94 / 2.02 | 3.40 / 2.38 |
+
+For comparison, the raw DEM differences at 1 to 2 km are 1.61, 2.56 and 3.32 m RMS, so smoothing helps but not enough.
+
+**Reading.**
+- Over 1 to 2 km the height difference between two points is wrong by about 1.1 to 2.6 m RMS (NMAD 1.1 to 1.7 m), against a 0.3 m head drop between blocks. A DTM from DEMNAS alone cannot place blocks by 0.3 m steps at these sites.
+- The difference keeps growing out to 8 km with no plateau, so the error is not short-range noise. It looks like trend and class-dependent offsets, not something a larger smoothing window removes.
+- The shortest lag bounds the ICESat-2 point noise at roughly 0.3 to 0.7 m, well below the 1 km numbers, so most of the 1 km error is not point noise. That bound is weak: the nearest pairs are mostly on one track, where errors are correlated.
+
+**Caveats.**
+- The ground heights are not truth. [Sun et al. 2026](https://www.sciencedirect.com/science/article/pii/S0034425726003858) report ICESat-2 ATL08 footprint RMSE of 3.64 m before refinement and 1.32 m after, and GEDI 4.14 m and 2.78 m, against airborne lidar in Brunei peat. Our figures mix DEM and lidar-ground error and cannot be separated without an airborne reference.
+- Part of the difference between points is land-cover-dependent offset (different bias per class), which a class-aware calibration partly removes. Mendahara and Bengkalis include coastal and mangrove classes.
+- Treat these as provisional until the airborne LiDAR is compared.
 
 ## Limits of this evidence
 
@@ -235,7 +262,10 @@ Searched on 2026-10-08. Entries marked with a dagger were seen only as a search 
 
 ## Open items
 
-- Obtain Julzarika's "Indonesian DEMNAS: DSM or DTM?" and any DEMNAS metadata on source sensors, acquisition years and the stated vertical datum.
+- ~~Obtain Julzarika's "Indonesian DEMNAS: DSM or DTM?"~~ Done 2026-10-12; see `demnas-literature.md`. Still open: per-sheet DEMNAS source metadata (BIG's DSM coverage index in digital form, acquisition years). Ask D. Susetyo or BIG directly.
+- Plot DEM - ground along the ICESat-2 tracks against the BIG source-coverage map, to see whether offsets step at sensor boundaries; if so, fit k and offset per source area.
+- Replace the prior `k_by_class` of 0.8 with a value the data support (0.05 to 0.2 for tree cover at the three sites), or make `--ground none` warn that the prior is unsupported.
+- Reword the 0.25 m RMSE target: published DEMNAS accuracy is 2.2 to 5.0 m RMSE at open-ground points, so the target needs LiDAR or GNSS. Report relative (detrended) error alongside the absolute error.
 - Add an independent ground reference: GNSS spot heights on canal banks and at loggers, or LiDAR, to decide whether the offset is a datum error or a DEM error.
 - Run the airborne LiDAR comparison when the data arrive: it is the independent test of the datum question. Use it to check the shared EGM2008 conversion and the open-versus-forest height pattern.
 - Test whether the DEM - ground residual maps to DEMNAS source tiles or acquisition dates.
@@ -258,3 +288,54 @@ Rerun of Mendahara from the full-resolution DEM (not the 4x averaged one), on an
 | mendahara_8m | 8 m native | 23,426 / 68,979 | 6,660 | 2.83 | +0.72 / 2.32 / 1.54 |
 
 The validation sets differ because more points land on valid cells at 8 m, so the numbers are not strictly comparable. The smoothed RMSE is the same (2.32 m) at both grids. Fitted tree cover k is 0.09 (0.10 at 30 m). The finer grid does not improve the accuracy of `dtm_smooth.tif`. That surface is smoothed over 300 m and 150 m scales by design, so its effective resolution is set by the smoothing, not by the pixel size. The 8 m grid matters for `dtm_corrected.tif`, which keeps cell-level detail.
+
+## Airborne lidar at Pulau Padang (Bengkalis KHG) (2026-10-12)
+
+First comparison against airborne lidar. Script: `script/lidar_compare.py`; output: `runs/padang_lidar/lidar_compare.json` and `lidar_on_grid.tif`; log `runs/padang_lidar.log`. Surfaces compared are from `runs/bengkalis_30m_gt/` (ICESat-2 calibrated, 30 m). The lidar was held out and not used in any fit.
+
+**Lidar.** `DTM_2mFloat.tif`, 2 m, EPSG:32648, float32, nodata -32767, 15,950 x 28,500 px. The GeoTIFF carries no vertical CRS. The delivery PDFs in `REPEAT-LH/dokumen/` say the flight was in **November 2016** and that GPS validation gave a DTM RMSE of 0.35 m (Executive Summary Laporan Pulau Padang, 2018); they do not state the vertical datum. **The datum is unconfirmed.** The 2 m pixels were binned into the 30 m run cells (cells need at least 80% lidar coverage and a within-cell lidar SD of at most 1.5 m; water class 80 and the run's excluded cells are masked). 1.08 million cells (973 km²) remain.
+
+### Datum: a constant offset of about 2 m, not a geoid effect
+
+At the 6,543 usable ICESat-2 points on the lidar footprint:
+
+| Check | Result |
+|---|---|
+| EGM2008 N, pipeline vs independent pyproj (EPSG:4979 to 4326+3855), 8 points | identical to 0.01 m. N spans 1.1 to 2.9 m (median 1.86) |
+| ICESat-2 orthometric H minus lidar | median **+1.96 m**, NMAD 0.72 m |
+| Same, by canopy height 0-2 / 2-10 / 10-20 / 20+ m | +1.96 / +1.90 / +2.00 / +2.01 m (NMAD 0.4-0.8) |
+| Slope of (H - lidar) against N, open land only | -0.48 (r = -0.05), so the offset does not track the geoid |
+| By ICESat-2 year, 2019 to 2025 | 1.76 to 2.11 m, no trend |
+
+The satellite ground heights and the lidar agree in shape to under a metre and differ by a near-constant 2 m. That rules out the shared EGM2008 step as the cause of the offset at this site (the independent N matches) and rules out a canopy-dependent satellite error. It does not say which of the two is on the wrong datum. Candidates: a local mean-sea-level or benchmark datum in the lidar delivery, or a bias in the ICESat-2 heights. A 3 to 9 year epoch gap (2016 vs 2019-2025) cannot produce 2 m, and the by-year medians show no subsidence trend. All absolute figures below are therefore reported raw and with the median removed. Relative figures are unaffected by a constant offset.
+
+### Absolute error (30 m cells, raw, lidar datum unconfirmed)
+
+| Surface minus lidar | Median (m) | NMAD (m) | RMSE (m) | NMAD after median removed (m) |
+|---|---|---|---|---|
+| `dem_utm` (DEMNAS) | +4.36 | 2.99 | 5.32 | 2.99 |
+| `dtm_corrected` | +1.90 | 2.41 | 3.35 | 2.41 |
+| `dtm_smooth` | +1.88 | 2.00 | 3.04 | 2.00 |
+
+DEMNAS sits above the lidar ground by 3.1 to 3.7 m over open and short vegetation and by 5.5 to 7.8 m under 10 to 20+ m canopy, so it behaves as a surface model here with canopy partly in it. The ICESat-2 comparison on the same sample gives the same pattern (DEM minus H: +2.4 m in open land to +5.9 m under tall canopy). The -4 m open-land anomaly seen at Sebangau is **not** present at this site: DEMNAS is above both lidar and ICESat-2.
+
+### Relative error (the number the twin needs), median removed
+
+| Surface | RMSE after quadratic trend removed (m) | RMSE after 2 km moving mean removed (m) | RMS error of height difference at 0.5 / 1 / 2 km (m) |
+|---|---|---|---|
+| `dem_utm` | 2.48 | 1.89 | 2.29 / 2.61 / 2.94 |
+| `dtm_corrected` | 2.26 | 1.86 | 2.24 / 2.55 / 2.84 |
+| `dtm_smooth` | 1.80 | 1.25 | 1.20 / 1.67 / 2.08 |
+
+NMAD of the same height-difference error for `dtm_smooth` is 0.96 / 1.43 / 1.88 m. Slope error (RMS height-difference error over baseline) is 2.4 m/km at 0.5 km, 1.7 m/km at 1 km and 1.0 m/km at 2 km. Semivariogram of `dtm_smooth` minus lidar: exponential fit, practical range about 7.4 km, partial sill 3.8 m² (SD about 2 m), nugget about 0. The correlated error has a range of several km, so it behaves as a regional tilt-and-bow, not as pixel noise.
+
+For scale, the lidar surface itself differs by 0.85 m (RMS) over 0.5 km, 1.3 m over 1 km and 1.95 m over 2 km on this island (NMAD 0.34 / 0.60 / 1.07 m). At 1 to 2 km the smoothed DTM's height-difference error is the same size as the real height difference. **A 0.3 m head drop between blocks cannot be resolved on the smoothed DEMNAS surface**, and the first-pass ICESat-2 estimate (1.1 to 2.6 m RMS at 1 to 2 km) holds up against lidar (1.7 and 2.1 m).
+
+### What this does and does not settle
+
+- **Q1 (datum or DEM error).** Partly. The lidar and ICESat-2 agree in shape and differ by a constant 2 m, so ICESat-2 ground is a good relative reference at this site, and the DEMNAS error here is canopy and sheet offset, not a datum problem. The absolute offset between lidar and EGM2008 needs the lidar vendor's datum statement.
+- **Q2 (open versus forest pattern).** Not reproduced at this site: lidar and ICESat-2 agree in all canopy classes to within 0.1 m of the offset.
+- **Q3 (relative error).** Answered for this island: not good enough for a 0.3 m head drop.
+- **Q4, Q5.** Not tested yet (no source-sheet map, no alternative DEMs run).
+- Single site, single DEMNAS area. The lidar is 2016 and the DEMNAS and satellite epochs differ; on drained peat some of the residual may be subsidence, but the by-year medians do not show it.
+- The unmasked ICESat-2 minus lidar RMSE is 4.25 m against an NMAD of 0.72 m, so a small share of points have large differences (not yet examined: canals, edges, ICESat-2 outliers).

@@ -3,3 +3,5 @@
 runs/
 _data_sample/
 __pycache__/
+
+*.pdf
