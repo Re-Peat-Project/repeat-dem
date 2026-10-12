@@ -1,0 +1,15 @@
+[general]
+name=DEMNAS to DTM
+qgisMinimumVersion=3.36
+qgisMaximumVersion=4.99
+supportsQt6=True
+description=Turn DEMNAS into a smoothed ground surface: prepare, calibrate against ground points, correct and smooth, validate.
+about=Processing algorithms (toolbox group "DEMNAS to DTM") for the peat water-sharing digital twin. QGIS port of demnas_dtm.py, split into stages: 1 prepare inputs, 2 calibrate, 3 correct and smooth, 4 validate, plus an optional ICESat-2/GEDI fetch (needs the sliderule package).
+version=0.1.0
+author=danylaksono
+email=danylaksono@ugm.ac.id
+tracker=
+repository=
+tags=dem,demnas,dtm,peat,processing,lidar,icesat-2
+experimental=True
+hasProcessingProvider=yes
