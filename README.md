@@ -121,6 +121,7 @@ Smoothing methods, combinable in any order:
 |---|---|
 | `dtm_smooth.tif` | Final smoothed ground surface: input for contours, profiles and flow direction |
 | `dtm_residual.tif` | Corrected DTM minus smoothed surface: local relief and remaining noise |
+| `mineral_elevation.tif` | Only with `--peat-depth <raster in m>` (or `peat_depth:` in the config): smoothed surface minus peat thickness. The report then also has a `peat` block with peat volume and water volume at 0.7 and 0.8 |
 | `dtm_corrected.tif` | Vegetation-corrected, unsmoothed DTM |
 | `dem_utm.tif` | DEMNAS mosaic on the output grid |
 | `correction_m.tif`, `k_factor.tif` | What was subtracted, and the factor used |

@@ -252,6 +252,72 @@ For comparison, the raw DEM differences at 1 to 2 km are 1.61, 2.56 and 3.32 m R
 - Part of the difference between points is land-cover-dependent offset (different bias per class), which a class-aware calibration partly removes. Mendahara and Bengkalis include coastal and mangrove classes.
 - Treat these as provisional until the airborne LiDAR is compared.
 
+## Copernicus GLO-30 against DEMNAS (2026-10-15)
+
+Question: would a TanDEM-X based surface (WorldDEM, FABDEM) serve better than DEMNAS? GLO-30 is the open 30 m edited version of the same TanDEM-X data as WorldDEM (EGM2008 heights), so it is the cheapest proxy. `script/compare_base_dem.py` samples it at the usable ICESat-2/GEDI points of a run, with no calibration, and compares it with the raw DEMNAS values at the same points. Smoothed = median about 300 m then gaussian about 150 m, as in the DEMNAS chain. Pair columns are RMS / NMAD of the error difference between points (m).
+
+| Site | Surface | 0–150 m | 300–600 m | 1–2 km | 4–8 km | Median DEM − ground, canopy < 2 m / ≥ 2 m (m) |
+|---|---|---|---|---|---|---|
+| Sebangau window | DEMNAS raw | 0.89 / 0.70 | 1.31 / 1.12 | 1.61 / 1.34 | 2.79 / 2.36 | −3.93 / +0.39 |
+| | **GLO-30 raw** | 0.49 / 0.35 | 0.75 / 0.48 | **0.91 / 0.67** | 1.11 / 0.86 | **+0.55 / +1.46** |
+| | GLO-30 smoothed | 0.35 / 0.17 | 0.54 / 0.37 | 0.67 / 0.60 | 0.92 / 0.81 | |
+| | DEMNAS calibrated + smoothed | 0.37 / 0.24 | 0.74 / 0.70 | 1.16 / 1.06 | 1.73 / 1.73 | |
+| Mendahara | DEMNAS raw | 1.60 / 1.04 | 2.09 / 1.41 | 2.56 / 1.75 | 3.57 / 2.59 | −0.04 / −0.02 |
+| | GLO-30 raw | 2.30 / 1.56 | 3.08 / 2.37 | 4.12 / 3.20 | 4.74 / 4.13 | +2.50 / +4.53 |
+| | DEMNAS calibrated + smoothed | 0.56 / 0.32 | 1.14 / 0.70 | 1.80 / 1.10 | 2.97 / 2.03 | |
+| Bengkalis | DEMNAS raw | 2.20 / 1.38 | 2.90 / 1.92 | 3.47 / 2.51 | 4.20 / 3.29 | +1.66 / +2.45 |
+| | GLO-30 raw | 3.27 / 1.94 | 4.63 / 3.05 | 5.83 / 4.25 | 7.33 / 5.92 | +4.89 / +6.08 |
+| | DEMNAS calibrated + smoothed | 0.93 / 0.48 | 1.75 / 1.06 | 2.62 / 1.71 | 3.54 / 2.41 | |
+
+**Findings.**
+1. **At Sebangau, the DEMNAS offset is a DEMNAS property, not a shared geoid error.** GLO-30 and the ICESat-2/GEDI heights both use EGM2008 and agree to about +0.5 m over open peat, where DEMNAS is 4 m below ground. This answers open question 1 in `AGENTS.md` to a good degree: the satellite lidar ground heights are not the problem. The +0.5 m in open land is also about what 10 to 14 years of peat subsidence (TanDEM-X was acquired in 2011 to 2015) would give. Airborne LiDAR is still needed for absolute truth.
+2. **GLO-30 behaves like a surface model where vegetation is tall.** At Mendahara and Bengkalis (plantation, forest, mangrove) it sits 2.5 to 6 m above the ground and is clearly worse than DEMNAS. A fitted canopy-height correction (Meta/WRI canopy height, per-class intercepts) leaves the tree-cover intercept at +3 to +6 m and the 1 to 2 km relative error at 2.8 to 4.4 m smoothed, still worse than calibrated DEMNAS (1.8 and 2.6 m). The canopy height product does not explain the bias there.
+3. **The Sebangau window is mostly degraded and open peat.** About 53% of its "tree cover" points have canopy below 2 m, and it burned in 2015 and 2019. The GLO-30 result there should not be read as valid for intact forest. It is, however, the kind of peat where rewetting decisions matter.
+4. **Even the best case is above the block step.** GLO-30 smoothed gives 0.67 m RMS over 1 to 2 km at Sebangau. That is better than DEMNAS but still above 0.3 m, and includes ICESat-2 noise.
+5. **WorldDEM is the same physics as GLO-30** (X-band, same acquisitions) at 12 m instead of 30 m. After smoothing at 300 m the extra resolution adds little. FABDEM (a machine-learning forest correction of GLO-30) is tested in the next section.
+
+### FABDEM v1.2 (2026-10-15)
+
+Same method and points as above, FABDEM v1.2 tiles from the Hugging Face mirror (`links-ads/fabdem`; the 10 degree block folders are named like `S10E110-N00E120`). The script now samples both surfaces (`script/compare_base_dem.py`). Pair columns are RMS / NMAD (m) at 1–2 km; offsets are the median DEM − ground (m) for canopy below 2 m / at or above 2 m.
+
+| Site | DEMNAS calibrated + smoothed | GLO-30 smoothed | FABDEM raw | FABDEM smoothed | FABDEM offset (< 2 m / ≥ 2 m) | GLO-30 offset |
+|---|---|---|---|---|---|---|
+| Sebangau window | 1.16 / 1.06 | 0.67 / 0.60 | **0.67 / 0.62** | **0.65 / 0.62** | +0.14 / +0.19 | +0.55 / +1.46 |
+| Mendahara | **1.80 / 1.10** | 3.03 / 2.08 | 2.99 / 1.55 | 2.48 / 1.39 | +1.32 / +1.41 | +2.50 / +4.53 |
+| Bengkalis | **2.62 / 1.71** | 4.42 / 3.00 | 5.09 / 2.73 | 4.26 / 2.39 | +2.03 / +1.38 | +4.89 / +6.08 |
+
+**Findings.**
+1. **FABDEM removes the canopy dependence.** Its offset is nearly the same under open and tall vegetation at all three sites (for example +0.14 and +0.19 m at Sebangau), where GLO-30 differed by 1 to 2 m between the classes. What is left is a site-level offset of +0.1 to +2 m, which does not affect relative heights and can be fitted from ICESat-2/GEDI. Part of it may be peat subsidence since the TanDEM-X acquisitions.
+2. **At Sebangau, uncalibrated FABDEM is the best surface tested:** 0.65 to 0.67 m RMS over 1 to 2 km, against 1.16 m for calibrated and smoothed DEMNAS, and with no fitting. The 4 m DEMNAS offset there is again absent.
+3. **At Mendahara and Bengkalis, calibrated DEMNAS is still better** (1.80 and 2.62 m against 2.48 and 4.26 m smoothed FABDEM). The gap is mostly in the tails: FABDEM's NMAD is closer (1.39 against 1.10 m at Mendahara). These sites have plantation, coastal and mangrove land cover where the ML correction is less reliable. Per-class errors were not examined.
+4. **None reaches 0.3 m.** The best result, 0.65 m at Sebangau, still includes ICESat-2 noise but is above the block step.
+5. **Licence.** The University of Bristol distribution is CC BY-NC-SA 4.0. The Hugging Face mirror states the Non-Commercial Government Licence v2.0. Both are non-commercial; clarify whether the KLH deliverable counts as such before building the pipeline on it.
+
+**Next.** Fetch ICESat-2/GEDI ground points over the whole Kahayan–Sebangau KHG (tiles of 0.5 degrees), and compare DEMNAS, GLO-30 and FABDEM by land cover over the full KHG, including the park forest, before choosing a base surface for it. FABDEM is the leading candidate for the degraded and burnt peat that matters most there.
+
+## Whole Kahayan–Sebangau KHG (2026-10-15)
+
+The Sebangau window result above was too favourable to FABDEM and GLO-30 to generalise, so the pipeline was run over the whole KHG (polygon from the KHG layer, DEMNAS tile `DEMNAS_sebangau.tif`, 30 m, ICESat-2 ATL08 only, joint intercepts; config `runs/ks_full.yaml`, output `runs/ks_full_30m`, 279 s). SlideRule returned 134,293 ground segments (about 6 tiles; some granule and beam reads failed with H5Coro errors, so coverage is slightly incomplete). 22,422 were usable. Of the rest, 88,419 were near a land-cover edge and 22,394 fell where DEMNAS has no data: **the DEMNAS tile supplied covers only part of the KHG** (a diagonal strip), while GLO-30 and FABDEM are complete.
+
+Relative error over 1–2 km (RMS / NMAD, m), per-class median offsets removed, DEMNAS calibrated and smoothed by the pipeline, GLO-30 and FABDEM smoothed (median about 300 m, gaussian about 150 m):
+
+| Land-cover group (n) | DEMNAS calibrated + smoothed | GLO-30 smoothed | FABDEM smoothed |
+|---|---|---|---|
+| All classes (22,422) | 2.14 / 1.36 | 2.58 / 1.47 | 2.19 / 1.24 |
+| Non-forest: shrub, grass, crop, wetland (8,754) | 1.02 / 0.91 | **0.89 / 0.70** | 0.91 / 0.73 |
+| Tree cover (11,893) | **2.20 / 1.48** | 2.69 / 1.64 | 2.64 / 1.54 |
+| Mangrove (1,775) | 3.79 / 3.20 | 4.04 / 3.73 | **2.39 / 1.77** |
+
+Median surface − ground (m) before any offset removal, raw surfaces: tree cover DEMNAS +0.75, GLO-30 +4.88, FABDEM +2.34; shrubland −3.47, +0.89, +0.45; grassland −1.57, +0.80, +0.82; mangrove +5.73, +9.68, +1.93.
+
+**Findings.**
+1. **No decisive winner KHG-wide.** Once DEMNAS is calibrated per class and smoothed, it is level with FABDEM (2.14 against 2.19 m RMS, NMAD 1.36 against 1.24 m). FABDEM gets there with class offsets only, and GLO-30 is worse. The earlier large gap in the 15 km window (0.65 against 1.16 m) came from that window being mostly degraded open peat.
+2. **Open and degraded peat favours TanDEM-X surfaces, modestly:** 0.9 against 1.0 m RMS and 0.7 against 0.9 m NMAD. Class offsets still differ a lot (DEMNAS −3.5 m in shrubland and +0.75 m in tree cover), so DEMNAS needs calibration; FABDEM and GLO-30 are within 1 m in open classes without it.
+3. **Tall forest stays poor for every surface** (2.2 to 2.7 m RMS). FABDEM leaves +2.3 m of canopy bias in tree cover; GLO-30 +4.9 m. **Mangrove and coastal peat favours FABDEM** (+1.9 m against +5.7 m for DEMNAS).
+4. **No surface reaches the 0.3 m block step anywhere**; the best group (open peat) is about 0.9 m, which includes ICESat-2 noise (point noise of the order 0.3 to 0.7 m).
+5. **Practical difference is coverage and effort,** not accuracy: FABDEM and GLO-30 are wall-to-wall with no tile gaps and need only class offsets; DEMNAS needs tiles, calibration and smoothing. FABDEM is non-commercial licensed.
+6. **Sub-KHG delineation is also affected (inference, not tested).** Regional dome slopes of a fraction of a metre per kilometre are comparable to 1 to 2 m of relative error over 1 to 2 km, so flow routing from any of these surfaces is uncertain at the scale of sub-KHG units. Delineation should lean on the mapped rivers and primary canals and use the DEM only for orientation, then be compared with the 16 sub-KHG of the 2021 study.
+
 ## Limits of this evidence
 
 - One 15 x 15 km window and one DEMNAS tile. Two satellite lidar sources (ICESat-2 ATL08 and GEDI L2A) that share the same geoid conversion, and no GNSS or airborne LiDAR points yet.

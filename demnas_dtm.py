@@ -65,6 +65,8 @@ DEFAULTS: dict = {
     "target_crs": "auto-utm",     # "auto-utm" or any CRS string, e.g. "EPSG:32749"
     "target_res_m": 8.0,          # DEMNAS native is ~8 m (0.27 arc-second)
     "dem_valid_range_m": [-50, 4000],   # values outside are treated as nodata
+    "peat_depth": None,           # optional peat thickness raster (m): adds mineral substrate
+                                  # elevation and peat / water volume to the outputs
 
     "corrections": {
         "mode": "download",       # "download" | "local" | "none"
@@ -154,6 +156,8 @@ def load_config(args: argparse.Namespace) -> dict:
         cfg["aoi"] = args.aoi
     if args.out:
         cfg["out"] = args.out
+    if args.peat_depth:
+        cfg["peat_depth"] = args.peat_depth
     if args.res:
         cfg["target_res_m"] = args.res
     if args.crs:
@@ -685,6 +689,21 @@ def run(cfg: dict) -> dict:
         smoothed[~aoi_mask] = np.nan
     residual = dtm - smoothed
 
+    peat_stats = None
+    if cfg.get("peat_depth"):
+        thick = np.full(shape, np.nan, dtype="float32")
+        warp_into(cfg["peat_depth"], thick, grid, Resampling.bilinear, remote=False)
+        mineral = smoothed - thick
+        write_raster(out / "mineral_elevation.tif", mineral, grid, cfg)
+        ok = np.isfinite(thick) & np.isfinite(smoothed)
+        vol = float(np.nansum(np.where(ok, thick, 0))) * grid.res ** 2
+        peat_stats = {"peat_volume_m3": vol,
+                      "water_volume_m3_at_0.8": 0.8 * vol, "water_volume_m3_at_0.7": 0.7 * vol,
+                      "mean_thickness_m": float(np.nanmean(np.where(ok, thick, np.nan))),
+                      "note": ("total water content (0.7-0.8 of peat volume, Kahayan-Sebangau 2021); "
+                               "only the specific-yield part drains as the water table falls")}
+        log.info("peat volume %.3g m3; mineral substrate elevation written", vol)
+
     validation = None
     if gpts is not None and len(gpts):
         validation = ground_validation(gpts, grid, {"dem_raw": dem, "dtm_prior_k": dtm_prior,
@@ -722,6 +741,7 @@ def run(cfg: dict) -> dict:
         "spike_share": float(spikes.mean()),
         "stats": {"dem": stats(dem), "correction_m": stats(np.where(np.isfinite(dem), correction, np.nan)),
                   "dtm_smooth": stats(smoothed), "residual": stats(residual)},
+        "peat": peat_stats,
         "calibration": calib,
         "datum_diagnostics": diag,
         "validation_all_classes": validation,
@@ -743,6 +763,7 @@ def main(argv=None):
     ap.add_argument("--aoi", help="AOI vector (e.g. KHG boundary)")
     ap.add_argument("--out", help="output folder")
     ap.add_argument("--res", type=float, help="target resolution in metres")
+    ap.add_argument("--peat-depth", help="peat thickness raster (m) for mineral elevation and peat volume")
     ap.add_argument("--crs", help="target CRS, default auto-utm")
     ap.add_argument("--no-download", action="store_true", help="do not fetch cloud corrections")
     ap.add_argument("--landcover", help="local land cover raster (ESA WorldCover classes)")
