@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What moves a peat DTM? An illustrated guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<link rel="stylesheet" href="explain.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>What moves a peat DTM?</h1>
+    <p>A cross-section of a tropical peat dome between a river and a drainage canal. Pick a group to see which parameters change the elevation a DTM reports, and why.</p>
+  </header>
+
+  <div class="scene">
+    <div class="scene-scroll">
+      <svg class="art" id="art" viewBox="0 0 1200 640" role="img" aria-labelledby="art-title">
+        <title id="art-title">Cartoon cross-section of a tropical peat dome showing sensors, peat body, water table, subsidence and measurement methods</title>
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--sky-top)"/>
+            <stop offset="1" stop-color="var(--sky-bottom)"/>
+          </linearGradient>
+          <linearGradient id="peatGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#6B4630"/>
+            <stop offset=".55" stop-color="var(--peat)"/>
+            <stop offset="1" stop-color="var(--peat-dark)"/>
+          </linearGradient>
+          <pattern id="clayPat" width="46" height="18" patternUnits="userSpaceOnUse">
+            <rect width="46" height="18" fill="var(--clay)"/>
+            <path d="M0 13 Q12 9 23 13 T46 13" stroke="var(--clay-dark)" stroke-width="1.5" fill="none" opacity=".55"/>
+          </pattern>
+          <marker id="arW" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#FFFFFF"/></marker>
+          <marker id="arY" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#F2B705"/></marker>
+          <marker id="arC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1FA0C8"/></marker>
+        </defs>
+
+        <!-- sky -->
+        <rect width="1200" height="640" fill="url(#skyGrad)"/>
+
+        <!-- datum ruler (A) -->
+        <g id="ruler" data-g="A">
+          <line x1="34" y1="190" x2="34" y2="370" stroke="#1D2B26" stroke-width="3" stroke-linecap="round"/>
+          <g id="rulerTicks"></g>
+          <line x1="26" y1="300" x2="88" y2="300" stroke="#C2338A" stroke-width="3"/>
+          <line x1="26" y1="314" x2="88" y2="314" stroke="#1FA0C8" stroke-width="3"/>
+        </g>
+
+        <!-- TanDEM-X style X-band radar (A) -->
+        <g id="tdx" data-g="A">
+          <image href="assets/satellite.svg" x="182" y="24" width="56" height="56"/>
+        </g>
+        <g id="xwaves" data-g="A"></g>
+
+        <!-- L-band satellite (A, E) -->
+        <g id="lsat" data-g="A,E">
+          <image href="assets/satellite.svg" x="1084" y="38" width="56" height="56" transform="translate(2224 0) scale(-1 1)"/>
+        </g>
+        <g id="lwaves" data-g="A,E"></g>
+
+        <!-- airborne LiDAR (E) -->
+        <g id="plane" data-g="E">
+          <g id="planeBody">
+            <g id="lidarFan" opacity=".55"></g>
+            <image href="assets/airplane.svg" x="-34" y="-34" width="68" height="68" transform="translate(472 106) rotate(45)"/>
+          </g>
+        </g>
+
+        <!-- rain cloud (C) -->
+        <g id="cloud" data-g="C">
+          <image href="assets/cloud.svg" x="584" y="38" width="140" height="140"/>
+          <g id="rain"></g>
+        </g>
+
+        <!-- ICESat-2 / GEDI (E) -->
+        <g id="icesat" data-g="E">
+          <line x1="852" y1="54" x2="878" y2="272" stroke="#3BD16F" stroke-width="2" stroke-dasharray="4 6"/>
+          <g id="photons"></g>
+          <image href="assets/satellite.svg" x="822" y="12" width="56" height="56"/>
+        </g>
+
+        <!-- ground: mineral substrate -->
+        <path id="substrate" d="" fill="url(#clayPat)"/>
+        <path id="baseLine" data-g="B" d="" fill="none" stroke="#F2B705" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>
+
+        <!-- peat body -->
+        <path id="peatFill" d="" fill="url(#peatGrad)"/>
+        <g id="texture" data-g="B"></g>
+        <path id="strip" d="M1110 425 L1200 425 L1200 466 L1110 466 Z" fill="url(#peatGrad)"/>
+
+        <!-- river (A, C) -->
+        <g id="river" data-g="A,C">
+          <path d="M0 398 L120 398 L116 452 Q60 470 0 460 Z" fill="var(--blackwater)"/>
+          <path d="M8 404 h40 M66 410 h34" stroke="#8B5A35" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+        </g>
+        <g id="floodpools" data-g="C">
+          <ellipse cx="158" cy="396" rx="20" ry="3.5" fill="#5C3A22" stroke="#9C6B42" stroke-width="1.5"/>
+          <ellipse cx="206" cy="396" rx="14" ry="3" fill="#5C3A22" stroke="#9C6B42" stroke-width="1.5"/>
+        </g>
+        <g id="gauge" data-g="C">
+          <line x1="96" y1="372" x2="96" y2="456" stroke="#FFFFFF" stroke-width="4"/>
+          <g id="gaugeTicks"></g>
+        </g>
+
+        <!-- canal (A, C) -->
+        <path d="M1060 425 L1110 425 L1106 478 L1064 478 Z" fill="#24160D"/>
+        <path id="canalWater" data-g="A,C" d="M1061 452 L1109 452 L1106 478 L1064 478 Z" fill="var(--blackwater)"/>
+        <g id="block" data-g="C">
+          <rect x="1072" y="436" width="26" height="42" fill="#A0703F" stroke="#5B3A26" stroke-width="2"/>
+          <path d="M1072 446 h26 M1072 456 h26 M1072 466 h26" stroke="#5B3A26" stroke-width="2"/>
+        </g>
+
+        <!-- vegetation -->
+        <g id="forest" class="soft" data-g="A"></g>
+        <g id="plantation" data-g="D"></g>
+        <g id="burn" data-g="D"></g>
+        <g id="fire" data-g="D"></g>
+
+        <!-- measured and modelled lines -->
+        <path id="dsm" data-g="A" d="" fill="none" stroke="var(--dsm)" stroke-width="3.5" stroke-dasharray="10 7" stroke-linecap="round"/>
+        <path id="pix" data-g="A" d="" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>
+        <path id="ghost" data-g="A,D" d="" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-dasharray="7 6"/>
+        <path id="surface" d="" fill="none" stroke="var(--dtm)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="wt" data-g="C,D" d="" fill="none" stroke="var(--wt)" stroke-width="3.5" stroke-dasharray="2 6" stroke-linecap="round"/>
+
+        <!-- peat body overlays (B) -->
+        <g id="thick" data-g="B"></g>
+        <g id="spring" data-g="B">
+          <path d="M520 326 l14 6 l-28 10 l28 10 l-28 10 l28 10 l-14 6" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="504" y="318" width="32" height="8" rx="2" fill="#FFFFFF"/>
+          <rect x="504" y="378" width="32" height="8" rx="2" fill="#FFFFFF"/>
+        </g>
+
+        <!-- hydrology overlays (C) -->
+        <g id="flow" data-g="C"></g>
+        <g id="et" data-g="C"></g>
+        <g id="dist" data-g="C"></g>
+
+        <!-- dynamics overlays (D) -->
+        <g id="co2" data-g="D"></g>
+        <g id="consol" data-g="D"></g>
+        <g id="cracks" data-g="D"></g>
+        <g id="osc" data-g="D"></g>
+
+        <!-- observations (C, D, E) -->
+        <g id="logger" data-g="C,E"></g>
+        <g id="pole" data-g="D,E"></g>
+        <g id="insar" data-g="E"></g>
+
+        <!-- labels -->
+        <g id="labels"></g>
+      </svg>
+    </div>
+  </div>
+
+  <p class="pan-hint">Swipe the picture sideways to see the canal side.</p>
+  <div class="legend" aria-label="Line legend">
+    <span><i class="l-dtm"></i>Peat surface (true DTM)</span>
+    <span><i class="l-dsm"></i>What radar or stereo sees (DSM)</span>
+    <span><i class="l-wt"></i>Water table</span>
+    <span><i class="l-old"></i>Older surface (earlier DEM epoch)</span>
+  </div>
+
+  <div class="controls">
+    <div class="groups" id="groups" role="group" aria-label="Parameter groups"></div>
+    <button class="tour" id="tour" type="button" aria-pressed="false">Play tour</button>
+  </div>
+
+  <section class="panel" aria-live="polite">
+    <div>
+      <h2 id="gTitle"></h2>
+      <p class="sum" id="gSum"></p>
+      <ul class="plist" id="plist"></ul>
+    </div>
+    <div class="detail" id="detail"></div>
+  </section>
+
+  <footer>
+    Built for the proposal “Physics-informed open DTM for peatland water balance (neraca air)”. Group letters match the parameter table in the proposal. Illustration is schematic, not to scale: real domes rise a few metres over several kilometres. Satellite, aircraft, cloud, tree, palm and fire icons are Twemoji by Twitter, Inc. and contributors (CC-BY 4.0, <a href="assets/ATTRIBUTION.md">details</a>); the profile, water and instruments are drawn in SVG. Animation uses anime.js (MIT licence).
+  </footer>
+</div>
+
+<script src="explain-data.js"></script>
+<script src="explain.js"></script>
+</body>
+</html>
