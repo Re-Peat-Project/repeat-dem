@@ -1,0 +1,36 @@
+# DEM benchmark, site 1: KHG Sungai Mendahara - Sungai Batanghari (Jambi).
+# Run: python script/dem_benchmark.py benchmark/mendahara.yaml      Outputs: the KHG work folder, key out below
+# Paths are relative to $REPEAT_DATA (default ../_data). Globs are mosaicked as a VRT; nothing is resampled or copied.
+site: mendahara
+out: ${REPEAT_KHG}/15.05-07-10.01_mendahara_batanghari/01_dem/benchmark   # REPEAT_KHG defaults to the workspace _khg
+khg: KHG Sungai Mendahara - Sungai Batanghari
+boundary: [batas_khg_indonesia.gpkg, nama__khg__indonesia__2017__rev_tipologi, NAMA_KHG]
+lidar:                       # held-out reference, never used in a fit
+  path: lidar_klhk/dem_25m/DEM25M/Jambi25m.tif
+  note: KLHK LiDAR DEM 25 m, UTM 48S; acquisition date and vertical datum not recorded
+landcover: dem/open/worldcover/ESA_WorldCover_10m_2021_v200_*_Map.tif
+candidates:
+  demnas:        {path: "dem/demnas_tiles/DEMNAS_*_v1.0.tif", assign_crs: "EPSG:4326", note: "BIG DEMNAS sheets, 0.27 arcsec, DSM"}
+  klhk_modelled: {path: "Peat depth and DTM/DTM_Sumatera-002/02_Jambi/DTM_Sungai_Mendahara_Sungai_Batanghari.tif", note: "BRGM/KLHK modelled DTM, 0.4 arcsec, method unknown"}
+  glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_S0[12]_00_E10[34]_00_DEM.tif", note: "Copernicus GLO-30 DSM"}
+  fabdem:        {path: "dem/open/fabdem/S0[12]E10[34]_FABDEM_V1-2.tif", note: "FABDEM v1.2"}
+  deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Mendahara_Batanghari.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+metrics:
+  shifts_m: [500, 1000, 2000]          # height-difference error over these baselines (rows and columns, every cell)
+  variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
+# Written before any result (2026-10-25). Judged on the 1 km height-difference error of (candidate - lidar):
+criterion:
+  baseline_m: 1000
+  tier_a_rms_m: 0.30                   # resolves a 0.3 m head drop between canal blocks
+  tier_b_fraction_of_signal: 0.5       # at most half the real 1 km height difference in this site's lidar
+# Processed variants (step 04): each candidate through demnas_dtm (script/tiled_dtm.py, same method in strips) on its
+# native resolution, ICESat-2 class offsets (k and per-class intercept fitted; lidar never used), then the repeat-dem
+# smoothing (median 300 m, gaussian 150 m). Written before any processed result (2026-10-25).
+processing:
+  ground_points: icesat2/atl08_Mendahara_Batanghari_2019-2025.gpkg      # in $REPEAT_DATA, ellipsoidal heights
+  res_m: {demnas: 8, klhk_modelled: 12.37, glo30: 30, fabdem: 30, deltadtm: 30}
+  canopy: canopy/meta_chm_v1/*.tif                           # Meta/WRI canopy height tiles (repeat_common.fetch_open_dem --product chm)
+  dtm_candidates: [klhk_modelled, fabdem, deltadtm]           # prior k = 0 (bare-earth products); k still fitted
+  config:                                                     # merged over demnas_dtm defaults
+    aoi_buffer_m: 500
+    ground: {fit: {joint_intercept: true}}

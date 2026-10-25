@@ -1,0 +1,50 @@
+# DEM benchmark, site 2: KHG Sungai Sugihan - Sungai Lumpur (Sumatera Selatan). Also the pipeline test site
+# (configs in re-peat/sites/16.02.01_sugihan_lumpur/).
+# Run: python script/dem_benchmark.py benchmark/sugihan_lumpur.yaml      Outputs: the KHG work folder, key out below
+site: sugihan_lumpur
+out: ${REPEAT_KHG}/16.02.01_sugihan_lumpur/01_dem/benchmark   # REPEAT_KHG defaults to the workspace _khg
+khg: KHG Sungai Sugihan - Sungai Lumpur
+boundary: [batas_khg_indonesia.gpkg, nama__khg__indonesia__2017__rev_tipologi, NAMA_KHG]
+lidar:
+  path: lidar_klhk/dem_25m/DEM25M/OKI25.tif
+  note: KLHK LiDAR DEM 25 m (OKI), UTM 48S; acquisition date and vertical datum not recorded
+landcover: dem/open/worldcover/ESA_WorldCover_10m_2021_v200_*_Map.tif
+candidates:
+  demnas:        {path: "dem/demnas_tiles/DEMNAS_*_v1.0.tif", assign_crs: "EPSG:4326", note: "BIG DEMNAS sheets, 0.27 arcsec, DSM"}
+  klhk_modelled: {path: "Peat depth and DTM/DTM_Sumatera-002/03_Sumatera Selatan/DTM_Sungai_Sugihan_Sungai_Lumpur.tif", note: "BRGM/KLHK modelled DTM, 0.4 arcsec, method unknown"}
+  glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_S0[34]_00_E10[56]_00_DEM.tif", note: "Copernicus GLO-30 DSM"}
+  fabdem:        {path: "dem/open/fabdem/S0[34]E10[56]_FABDEM_V1-2.tif", note: "FABDEM v1.2"}
+  deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Sugihan_Lumpur.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+metrics:
+  shifts_m: [500, 1000, 2000]
+  variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
+criterion:                              # written before any result (2026-10-25)
+  baseline_m: 1000
+  tier_a_rms_m: 0.30
+  tier_b_fraction_of_signal: 0.5
+# Processed variants (step 04): each candidate through demnas_dtm (script/tiled_dtm.py, same method in strips) on its
+# native resolution, ICESat-2 class offsets (k and per-class intercept fitted; lidar never used), then the repeat-dem
+# smoothing (median 300 m, gaussian 150 m). Written before any processed result (2026-10-25).
+processing:
+  ground_points: icesat2/atl08_Sugihan_Lumpur_2019-2025.gpkg      # in $REPEAT_DATA, ellipsoidal heights
+  res_m: {demnas: 8, klhk_modelled: 12.37, glo30: 30, fabdem: 30, deltadtm: 30}
+  canopy: canopy/meta_chm_v1/*.tif                           # Meta/WRI canopy height tiles (repeat_common.fetch_open_dem --product chm)
+  dtm_candidates: [klhk_modelled, fabdem, deltadtm]           # prior k = 0 (bare-earth products); k still fitted
+  config:                                                     # merged over demnas_dtm defaults
+    aoi_buffer_m: 500
+    ground: {fit: {joint_intercept: true}}
+# Pipeline test (step 05), written before any result (2026-10-25): the same chain as re-peat/sites/16.02.01_sugihan_lumpur/
+# (delineate.yaml, neraca.yaml) with only the DTM changed. Delineation runs once per variant; neraca runs every variant
+# on the sub-KHG units delineated from the lidar, so its differences come from the terrain alone. Forcing is the
+# cached forcing_daily.csv (run_neraca.py --forcing file). Outputs: <out>/05_pipeline/<variant>/.
+pipeline:
+  site_configs: ../re-peat/sites/16.02.01_sugihan_lumpur  # delineate.yaml, neraca.yaml (relative to repeat-dem); they read ${REPEAT_KHG}
+  units_from: lidar
+  variants:                                              # name: DTM path ($REPEAT_DATA-relative, or step-04 output)
+    lidar: lidar_klhk/dem_25m/DEM25M/OKI25.tif
+    klhk_modelled_raw: "Peat depth and DTM/DTM_Sumatera-002/03_Sumatera Selatan/DTM_Sungai_Sugihan_Sungai_Lumpur.tif"
+    klhk_modelled__processed: 04_processed/klhk_modelled/dtm_smooth.tif
+    deltadtm__processed: 04_processed/deltadtm/dtm_smooth.tif
+    demnas__processed: 04_processed/demnas/dtm_smooth.tif
+  # amended 2026-10-25 before any processed variant ran: tier 2 added, the only tier that uses the DTM spatially (its own 500 m grid)
+  neraca_args: [--tier, "1", --tier, "2", --classes, "primary,secondary,tertiary", --forcing, file]

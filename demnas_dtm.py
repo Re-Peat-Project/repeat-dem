@@ -262,6 +262,12 @@ def load_dem(cfg: dict) -> tuple[np.ndarray, Grid, object]:
     bounds = None
     if aoi is not None:
         bounds = transform_bounds("EPSG:4326", src_crs, *aoi.bounds)
+        # snap outward to whole source cells: merge() with unaligned bounds re-samples the mosaic by a fraction of a
+        # cell (nearest), which the bilinear reprojection below then resamples again (found 2026-10-25: 0.24 m NMAD,
+        # up to 4 m, on GLO-30 against exact bilinear interpolation)
+        st = srcs[0].transform
+        bounds = (st.c + math.floor((bounds[0] - st.c) / st.a) * st.a, st.f + math.ceil((bounds[1] - st.f) / st.e) * st.e,
+                  st.c + math.ceil((bounds[2] - st.c) / st.a) * st.a, st.f + math.floor((bounds[3] - st.f) / st.e) * st.e)
     src_nodata = srcs[0].nodata if srcs[0].nodata is not None else -99999.0
     mosaic, mtrans = merge(srcs, bounds=bounds, nodata=src_nodata, dtype="float32")
     for s in srcs:
@@ -548,6 +554,14 @@ def fill_gaps(z: np.ndarray, max_px: int) -> np.ndarray:
 # --------------------------------------------------------------------------------------
 # 6. Ground truthing
 # --------------------------------------------------------------------------------------
+def sample_for_calibration(cfg, grid, dem, lc, chm, vm, x, y) -> dict:
+    """DEM, canopy, land cover, edge and vector-mask values at points (grid CRS); used per strip by script/tiled_dtm.py."""
+    em = gt.edge_mask(lc, float(cfg["ground"]["exclude"]["edge_buffer_m"]), grid.res)
+    return gt.sample_arrays(x, y, grid, {"dem": dem, "chm": chm, "lc": lc,
+                                         "edge": None if em is None else em.astype("float32"),
+                                         "vmask": None if vm is None else vm.astype("float32")})
+
+
 def ground_calibration(cfg, grid, dem, lc, chm, vm, aoi_ll, out):
     g = cfg["ground"]
     pts = gt.get_points(aoi_ll, g, out)
@@ -555,10 +569,13 @@ def ground_calibration(cfg, grid, dem, lc, chm, vm, aoi_ll, out):
         log.warning("no ground points available; prior k values kept")
         return None, None, None
     x, y = gt.to_grid_xy(pts, grid)
-    em = gt.edge_mask(lc, float(g["exclude"]["edge_buffer_m"]), grid.res)
-    s = gt.sample_arrays(x, y, grid, {"dem": dem, "chm": chm, "lc": lc,
-                                      "edge": None if em is None else em.astype("float32"),
-                                      "vmask": None if vm is None else vm.astype("float32")})
+    s = sample_for_calibration(cfg, grid, dem, lc, chm, vm, x, y)
+    return fit_from_samples(cfg, grid, pts, x, y, s, lc is not None, out)
+
+
+def fit_from_samples(cfg, grid, pts, x, y, s, has_lc, out):
+    """Datum conversion, exclusions, spatial split and k/bias fit from point samples (see ground_calibration)."""
+    g = cfg["ground"]
     pts = gt.to_dem_datum(pts, g, s["lc"])
     df = pts.drop(columns="geometry").copy()
     df["x"], df["y"] = x, y
@@ -570,7 +587,7 @@ def ground_calibration(cfg, grid, dem, lc, chm, vm, aoi_ll, out):
     reason[~s["inside"]] = "outside grid"
     reason[(reason == "") & ~np.isfinite(df["dem"].to_numpy())] = "no DEM"
     reason[(reason == "") & ~np.isfinite(df["H"].to_numpy())] = "no height"
-    if lc is not None:
+    if has_lc:
         reason[(reason == "") & df["lc"].isin([int(c) for c in g["exclude"]["landcover_classes"]]).to_numpy()] = "excluded class"
     reason[(reason == "") & (df["edge"].to_numpy() == 1)] = "near land-cover edge"
     if g["exclude"]["use_vector_masks"]:

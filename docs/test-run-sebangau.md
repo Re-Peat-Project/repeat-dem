@@ -405,3 +405,28 @@ For scale, the lidar surface itself differs by 0.85 m (RMS) over 0.5 km, 1.3 m o
 - **Q4, Q5.** Not tested yet (no source-sheet map, no alternative DEMs run).
 - Single site, single DEMNAS area. The lidar is 2016 and the DEMNAS and satellite epochs differ; on drained peat some of the residual may be subsidence, but the by-year medians do not show it.
 - The unmasked ICESat-2 minus lidar RMSE is 4.25 m against an NMAD of 0.72 m, so a small share of points have large differences (not yet examined: canals, edges, ICESat-2 outliers).
+
+## Lidar benchmark of the KLHK modelled DTMs and DEMNAS, five KHG (2026-10-25)
+
+Script: `script/lidar_benchmark.py`, sites in `script/lidar_benchmark.yaml`, output `runs/lidar_benchmark.csv` and `.log`. Every valid lidar cell inside the KHG boundary is compared at native resolution with the nearest cell of each surface (no resampling, no calibration, no datum conversion). Statistics of surface − lidar (m); NMAD is around the median, so a constant datum offset does not affect it.
+
+| KHG (lidar) | Surface | Cells | Median | NMAD | p05..p95 | Within 0.25 m of median |
+|---|---|---|---|---|---|---|
+| Pulau Padang (2 m, 2016) | KLHK modelled `DTM_Pulau_Padang` | 278 M | +2.68 | **1.20** | 1.02..4.82 | 17.9% |
+| | DEMNAS (`DEMNAS_bengkalis`) | 278 M | +4.40 | 3.41 | −0.16..10.38 | 5.7% |
+| Mendahara–Batanghari (`Jambi25m`) | KLHK modelled | 3.2 M | +0.71 | **1.11** | −1.83..2.11 | 19.8% |
+| | DEMNAS (`DEMNAS_mendahara`) | 3.2 M | +0.73 | 2.12 | −1.91..6.30 | 10.0% |
+| Air Hitam Laut–Buntu Kecil (`Muba25`) | KLHK modelled `WDTM_…` | 2.9 M | +4.96 | 3.53 | 0.28..9.09 | 5.8% |
+| | Deltares Berbak-Muba lidar DTM | 2.8 M | +0.005 | 0.044 | −0.21..0.14 | 94.6% |
+| | DEMNAS Sumatra JP2 | 2.9 M | +5.78 | **2.91** | 0.78..10.49 | 7.2% |
+| Saleh–Sugihan (20 m, 2020; lidar on 62% of the KHG) | KLHK modelled | 2.9 M | +0.57 | **0.65** | −0.51..1.87 | 30.9% |
+| | DEMNAS Sumatra JP2 | 2.9 M | +1.23 | 2.61 | −2.02..6.85 | 10.7% |
+| Sugihan–Lumpur (`OKI25`) | KLHK modelled | 10.2 M | +1.28 | **0.71** | −0.07..2.46 | 27.9% |
+| | DEMNAS Sumatra JP2 | 10.2 M | +2.14 | 3.17 | −2.14..14.14 | 9.1% |
+
+**Findings.**
+1. **The KLHK modelled DTMs are not lidar-derived** where lidar exists (NMAD 0.65 to 3.5 m against it), but at four of five KHG they are 2 to 4 times closer to the lidar than DEMNAS, with much shorter upper tails (canopy removed). At Pulau Padang, NMAD 1.20 m at native resolution against 2.00 m for this repo's `dtm_smooth` (30 m cells, median removed; section above).
+2. **Air Hitam Laut is the exception:** the modelled file there is worse than DEMNAS. The BRGM contours of that KHG were traced from another version of this DTM (re-peat `reports/investigations/brgm_contour_source_khg_summary.csv`).
+3. **`Muba25` and the Deltares Berbak-Muba DTM are the same surface to 4 cm NMAD**; they are not two independent lidar sources.
+4. The modelled DTMs sit +0.6 to +2.7 m above the lidar (median). Padang includes the unexplained ~2 m lidar datum offset.
+5. Not yet measured: relative error (height difference over 0.5 to 2 km), which is the number the twin needs. These are point-wise statistics only.

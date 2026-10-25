@@ -1,0 +1,31 @@
+# Sites for script/lidar_benchmark.py. Paths are relative to $REPEAT_DATA (default: ../_data).
+# lidar: the held-out reference. surfaces: candidate elevation sources sampled at every lidar cell.
+boundary: [batas_khg_indonesia.gpkg, nama__khg__indonesia__2017__rev_tipologi, NAMA_KHG]
+sites:
+  - khg: KHG Pulau Padang
+    lidar: lidar_pulau_padang_2016/DTM_2mFloat.tif
+    surfaces:
+      klhk_modelled: Peat depth and DTM/DTM_Sumatera-002/RIAU/DTM_Pulau_Padang.tif
+      demnas: dem/DEMNAS_bengkalis.tif
+  - khg: KHG Sungai Mendahara - Sungai Batanghari
+    lidar: lidar_klhk/dem_25m/DEM25M/Jambi25m.tif
+    surfaces:
+      klhk_modelled: Peat depth and DTM/DTM_Sumatera-002/02_Jambi/DTM_Sungai_Mendahara_Sungai_Batanghari.tif
+      demnas: dem/DEMNAS_mendahara.tif
+  - khg: KHG Sungai Air Hitam Laut - Sungai Buntu Kecil
+    lidar: lidar_klhk/dem_25m/DEM25M/Muba25.tif
+    surfaces:
+      klhk_modelled: Peat depth and DTM/DTM_Sumatera-002/02_Jambi/WDTM_KHG_Sungai_Air_Hitam_Laut_Sungai_Buntu_Kecil.tif
+      deltares_lidar: lidar_klhk/dem_25m/LiDAR_DTM_25.0m_BerbakMuba_UTM48S_FINAL (Deltares, 16 Feb 2018)1.tif
+      demnas_jp2: dem/demnas_sumatera/dem_sumatera_a_1.jp2
+  - khg: KHG Sungai Saleh - Sungai Sugihan
+    lidar: lidar_klhk/sugihan_saleh_2020/lidar_dtm/LIDAR__KHG_Sugihan_Saleh__20m__UTM_48S.tif
+    surfaces:
+      klhk_modelled: Peat depth and DTM/DTM_Sumatera-002/03_Sumatera Selatan/DTM_Sungai_Saleh_Sungai_Sugihan.tif
+      oki25_lidar: lidar_klhk/dem_25m/DEM25M/OKI25.tif
+      demnas_jp2: dem/demnas_sumatera/dem_sumatera_a_1.jp2
+  - khg: KHG Sungai Sugihan - Sungai Lumpur
+    lidar: lidar_klhk/dem_25m/DEM25M/OKI25.tif
+    surfaces:
+      klhk_modelled: Peat depth and DTM/DTM_Sumatera-002/03_Sumatera Selatan/DTM_Sungai_Sugihan_Sungai_Lumpur.tif
+      demnas_jp2: dem/demnas_sumatera/dem_sumatera_a_1.jp2
