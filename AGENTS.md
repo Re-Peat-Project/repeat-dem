@@ -67,12 +67,12 @@ The twin must also accept heads from GNSS or levelling (canal water levels, bloc
 - Add a timeout to GEDI requests (one hung about 90 minutes at Mendahara).
 - Cache downloaded canopy-height windows (4 to 5 min per tile).
 - Replace the prior `k_by_class` of 0.8, or warn that it is unsupported.
-- Rerun Mendahara with GEDI, and check Bengkalis cropland and shrubland (smoothed bias −5.2 m and −2.1 m).
+- Check Bengkalis cropland and shrubland (smoothed bias −5.2 m and −2.1 m). GEDI was tried at Mendahara and Sugihan-Lumpur on 2026-10-26 (`script/demnas_ground_filter.py`, `runs/checks/demnas_ground_filter.md`): too noisy under peat forest to calibrate with as filtered now; the DEMNAS ground filter is deferred.
 - `khg-prioritisation-module` has its own copy of `demnas_dtm.py` that has diverged (≈35,128 vs 34,710 bytes). This repo is the source; merge into one package.
 
 ## Working conventions
 
 - Runs and sample data are gitignored (`runs/`, `_data_sample/`); never commit rasters.
-- Memory is tight on the development machine (1 to 2 GB free at times): average a tile to about 30 m first, or use a window, for tests. Redirect logs to a file instead of piping, or a run looks hung.
+- Memory is tight on the development machine (1 to 2 GB free at times). Never coarsen data to make a run fit: process at native resolution in windows or strips with overlap (`script/tiled_dtm.py`), blocks or parallel workers, and say so if something does not fit. Resample only when the method needs a coarser analysis grid, keep the native copy and state the choice (workspace `AGENTS.md`). Redirect logs to a file instead of piping, or a run looks hung.
 - Do not commit or push unless asked. Mark unverified literature with a dagger (†) as in `docs/demnas-literature.md`.
 - Keep numbers in the docs traceable to a run folder or a paper.

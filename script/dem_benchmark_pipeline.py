@@ -62,6 +62,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
     ap.add_argument("--only", nargs="*")
+    ap.add_argument("--no-neraca", action="store_true", help="delineation only")
     a = ap.parse_args()
     cfg = yaml.safe_load(open(a.config, encoding="utf-8"))
     p = cfg["pipeline"]
@@ -75,7 +76,18 @@ def main():
 
     def dtm_path(v):
         rel = p["variants"][v]
-        f = site / rel if rel.startswith("04_processed") else data / rel
+        if rel == "flat":   # control: a constant surface on the grid of the lidar variant, so only the mapped channels shape the units
+            f = base / v / "flat_dtm.tif"
+            if not f.exists():
+                import rasterio
+                f.parent.mkdir(parents=True, exist_ok=True)
+                with rasterio.open(dtm_path(p["units_from"])) as d:
+                    a = d.read(1, masked=True)
+                    prof = d.profile | {"dtype": "float32", "nodata": -9999.0, "compress": "deflate"}
+                    with rasterio.open(f, "w", **prof) as o:
+                        o.write(np.where(a.mask, -9999.0, 5.0).astype("float32"), 1)
+            return str(f.resolve())
+        f = site / rel if rel.startswith(("01_", "02_", "04_", "05_")) else data / rel
         if not f.exists():
             sys.exit(f"{v}: {f} not found (run step 04 first?)")
         return str(f.resolve())
@@ -96,6 +108,8 @@ def main():
             rc = run([str(dl_py), "-m", "repeat_delineation", "--config", str((out / "delineate.yaml").resolve())],
                      WS / "repeat-delineation", out / "delineate.log")
             print(f"{v}: delineation exit {rc}", flush=True)
+        if a.no_neraca:
+            continue
         nc = load_sub(sc / "neraca.yaml", env)
         nc["dtm"] = dtm_path(v)
         nc["units"] = str(units_ref.resolve())

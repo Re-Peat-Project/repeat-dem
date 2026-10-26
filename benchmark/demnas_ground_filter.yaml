@@ -1,0 +1,39 @@
+# One-shot test: can a DeltaDTM-style ground filter plus an ICESat-2/GEDI trend correction make DEMNAS usable?
+# Run: python script/demnas_ground_filter.py benchmark/demnas_ground_filter.yaml
+# Written 2026-10-26, before any result. Parameters are set once here and not tuned on the LiDAR.
+sites: [benchmark/mendahara.yaml, benchmark/sugihan_lumpur.yaml]      # benchmark configs: KHG, LiDAR, out folder
+inputs:                                        # after the ICESat-2 class offsets (step 04), native grid, not smoothed
+  demnas: 04_processed/demnas/dtm_corrected.tif      # 8 m
+  deltadtm: 04_processed/deltadtm/dtm_corrected.tif  # 30 m, the bar to beat
+gedi: gedi/gedi_l2a_{slug}.gpkg                # in $REPEAT_DATA (repeat_common.fetch_gedi, sensitivity >= 0.98)
+out: 05_demnas_ground_filter                   # under the benchmark folder of each KHG
+
+# Ground filter (progressive morphological filter, as the classification step of DeltaDTM): a cell is non-ground when an
+# opening with a growing square window lowers it by more than dh = min(dh0 + slope * window step, dh_max).
+pmf:
+  windows_m: [16, 32, 64, 128, 256, 512, 1024]
+  dh0_m: 0.5
+  slope: 0.002          # m per m; peat dome flanks are gentler
+  dh_max_m: 3.0
+
+# Smoothing: the current repeat-dem chain (median window, then gaussian sigma) at four scales; 300/150 is the default.
+smoothing: [[150, 75], [300, 150], [600, 300], [1200, 600]]
+
+# Trend: residual (ground point - surface) at calibration points, gaussian kernel average on a 200 m correction grid,
+# shrunk toward 0 where points are sparse, added to the surface. Calibration = ICESat-2 calibration blocks of step 04 and
+# GEDI shots outside the ICESat-2 validation blocks. ICESat-2 validation blocks are held out for an independent check.
+trend:
+  sigma_m: 2000
+  cell_m: 200
+  prior_weight: 5        # equivalent number of points with residual 0
+  clip_m: 5.0            # residuals beyond this are clipped before averaging
+
+# Variants: <input>_base = despike only (as step 04); demnas_pmf = ground filter then despike; every variant at every
+# smoothing scale, with and without the trend. Scored as step 03 (1 km height-difference error against the LiDAR, which
+# is never used in a fit); a flat surface scores the LiDAR's own 1 km signal, listed as `flat`.
+# Decision: the DEMNAS step is kept only if a DEMNAS variant beats DeltaDTM with the same smoothing and trend at both
+# sites. Otherwise it is deferred and the result recorded. Smoothing: a scale replaces 300/150 only if it lowers the 1 km
+# error of the best variant at both sites.
+# Run record (2026-10-26): Mendahara ran in full. DEMNAS lost to DeltaDTM at every matched smoothing and trend setting
+# there, which already fails the decision rule, so the Sugihan-Lumpur DEMNAS run (about 3 h) was stopped and only
+# DeltaDTM was run there (--sites sugihan_lumpur --inputs deltadtm), for the smoothing question.

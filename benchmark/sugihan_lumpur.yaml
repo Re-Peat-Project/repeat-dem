@@ -46,5 +46,13 @@ pipeline:
     klhk_modelled__processed: 04_processed/klhk_modelled/dtm_smooth.tif
     deltadtm__processed: 04_processed/deltadtm/dtm_smooth.tif
     demnas__processed: 04_processed/demnas/dtm_smooth.tif
+    # added 2026-10-26 before these ran, delineation only (--no-neraca): smoothing scale (median/gaussian m) of the processed
+    # DeltaDTM (step 05_demnas_ground_filter), the lidar smoothed 300/150 like the processed surfaces, and a flat control
+    deltadtm_m150_g75: 05_demnas_ground_filter/deltadtm_base_m150_g75.tif
+    deltadtm_m300_g150: 05_demnas_ground_filter/deltadtm_base_m300_g150.tif
+    deltadtm_m600_g300: 05_demnas_ground_filter/deltadtm_base_m600_g300.tif
+    deltadtm_m1200_g600: 05_demnas_ground_filter/deltadtm_base_m1200_g600.tif
+    lidar_smoothed_m300_g150: 02_error_maps/lidar_smoothed.tif
+    flat: flat
   # amended 2026-10-25 before any processed variant ran: tier 2 added, the only tier that uses the DTM spatially (its own 500 m grid)
   neraca_args: [--tier, "1", --tier, "2", --classes, "primary,secondary,tertiary", --forcing, file]
