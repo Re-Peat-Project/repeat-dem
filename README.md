@@ -2,7 +2,9 @@
 
 Turns DEMNAS into a ground estimate, calibrates the correction against ICESat-2 (and optionally GEDI) ground heights, and smooths the result to a dome-scale surface for canal block siting. One command runs everything.
 
-DEMNAS is a radar DSM (IFSAR, TerraSAR-X, ALOS PALSAR) blended toward stereo-plotted mass points, so how much canopy it still contains is unknown and varies by area. In our three test sites the fitted canopy factor was far below the 0.8 prior, and the offset to lidar ground differed by site. Published accuracy is RMSE 2.2 to 5.0 m at open-ground control points; our smoothed results are 1.2 to 2.8 m at lidar points in vegetation. See [`docs/demnas-literature.md`](docs/demnas-literature.md) and [`docs/test-run-sebangau.md`](docs/test-run-sebangau.md). Treat `dtm_smooth.tif` as good for dome shape and regional slope, not for decimetre heights. Work is paused pending airborne LiDAR; see [`AGENTS.md`](AGENTS.md) for the plan to resume.
+DEMNAS is a radar DSM (IFSAR, TerraSAR-X, ALOS PALSAR) blended toward stereo-plotted mass points, so how much canopy it still contains is unknown and varies by area. In our three test sites the fitted canopy factor was far below the 0.8 prior, and the offset to lidar ground differed by site. Published accuracy is RMSE 2.2 to 5.0 m at open-ground control points; our smoothed results are 1.2 to 2.8 m at lidar points in vegetation. See [`docs/demnas-literature.md`](docs/demnas-literature.md) and [`docs/test-run-sebangau.md`](docs/test-run-sebangau.md). Treat `dtm_smooth.tif` as good for dome shape and regional slope, not for decimetre heights.
+
+The same method also corrects DeltaDTM. A benchmark against 25 m LiDAR at Mendahara-Batanghari and Sugihan-Lumpur (configs in [`benchmark/`](benchmark/), report `re-peat/reports/dem_benchmark/report.md`) found processed DeltaDTM closest to the LiDAR (height-difference error over 1 km 0.64 m and 0.47 m); DEMNAS, GLO-30 and FABDEM stayed at 1.7 to 2.5 m after processing. No source met the pre-registered criterion.
 
 ```
 DEMNAS tiles ─► mosaic, clip to KHG, reproject to UTM
@@ -28,6 +30,8 @@ If no ground points are available (no network, no coverage), the run continues w
 pip install -r requirements.txt
 ```
 
+`script/prepare_khg_dem.py` and `script/demnas_ground_filter.py` also need `repeat-common` (`pip install -e ../repeat-common`); `script/delineation_compare_map.py` needs matplotlib. The workspace chain runs this repo in `repeat-dem/.venv`.
+
 ## Run
 
 ```bash
@@ -41,7 +45,7 @@ python demnas_dtm.py --config my_config.yaml
 # offline, with your own correction rasters
 python demnas_dtm.py --dem dem.tif --out out --no-download --landcover lc.tif --chm chm.tif
 
-# add GEDI for denser ground points
+# add GEDI for denser ground points (noisy under peat forest: NMAD 4 to 5 m against LiDAR, see the workspace AGENTS.md)
 python demnas_dtm.py --dem "demnas/*.tif" --aoi khg_01.gpkg --out out --datasets icesat2_atl08 gedi_l2a
 
 # your own ground points (CSV with lon, lat, h)
@@ -49,7 +53,38 @@ python demnas_dtm.py --dem dem.tif --aoi khg.gpkg --out out --ground-points poin
 
 # skip calibration
 python demnas_dtm.py --dem dem.tif --out out --ground none
+
+# same method in strips, for grids that do not fit in memory (same config)
+python script/tiled_dtm.py --config my_config.yaml [--strip-rows 2000]
 ```
+
+Other flags: `--res`, `--crs`, `--peat-depth`, `-v`. [`config.example.yaml`](config.example.yaml) is the default config (as `--print-default-config`, without `peat_depth`). `script/tiled_dtm.py` writes a subset of the outputs below: `dtm_smooth.tif`, `dtm_corrected.tif`, `dem_utm.tif`, `landcover.tif`, `ground_points.gpkg` (and the `ground_points_raw.gpkg` cache), `validation.csv`, `run_report.json` and `run.log`, plus `landcover_input.tif` / `canopy_height_input.tif` when corrections are downloaded.
+
+## Per-KHG chain
+
+`re-peat/tools/khg_pipeline.py` calls two scripts here, in `repeat-dem/.venv`:
+
+| Step | Command | Writes to `_khg/<code>_<name>/` |
+|---|---|---|
+| `dem_inputs` | `python script/prepare_khg_dem.py --khg "<KHG name>" [--buffer-m 0]` | `01_dem/inputs/`: `lidar_<source>.tif`, `deltadtm.tif`, `demnas.tif` on their own grids, `manifest.csv`; summary in `re-peat/sites/khg_dem_inputs.csv` |
+| `dem_correction` (deltadtm, demnas) | `python script/tiled_dtm.py --config <out>/config.yaml` | `01_dem/processed/<dem>/` |
+
+The correction config is filled from `re-peat/tools/pipeline/templates/dem_correction_{deltadtm,demnas}.yaml` (the benchmark parameters: DeltaDTM 30 m without canopy factor, DEMNAS 8 m with canopy factors), with a tracked copy in `re-peat/sites/<code>_<name>/<dem>/dem_correction.yaml`. LiDAR is used as delivered.
+
+## Scripts
+
+| Script | Use |
+|---|---|
+| `dem_benchmark.py benchmark/<site>.yaml` | DEM benchmark steps 00-03 against LiDAR, into `_khg/<code>_<name>/01_dem/benchmark/` |
+| `dem_benchmark_process.py benchmark/<site>.yaml [--only ...]` | Step 04: every candidate through `tiled_dtm.py` |
+| `dem_benchmark_pipeline.py benchmark/<site>.yaml [--only ...] [--no-neraca]` | Step 05: delineation and neraca air with only the DTM changed |
+| `delineation_compare_map.py benchmark/<site>.yaml <variant> ...` | Map of the step 05 sub-KHG units side by side |
+| `demnas_ground_filter.py benchmark/demnas_ground_filter.yaml` | One-shot test of a ground filter and ICESat-2/GEDI trend on DEMNAS (`runs/checks/demnas_ground_filter.md`) |
+| `check_tiling.py`, `check_load_alignment.py`, `reference_resolution_test.py` | Method checks, output in `runs/checks/` |
+| `lidar_benchmark.py`, `lidar_compare.py`, `compare_base_dem.py`, `relative_error.py` | Earlier comparisons of runs with LiDAR, GLO-30/FABDEM and ICESat-2/GEDI (outputs in `runs/`) |
+| `qgis_demnas_clip_download_helper.py` | QGIS Processing script: download and clip DEMNAS sheets from Ina-Geoportal |
+
+[`qgis_plugin/`](qgis_plugin/README.md) is a QGIS Processing port of `demnas_dtm.py`.
 
 ## Correction sources (mode: `download`)
 
@@ -136,8 +171,8 @@ Smoothing methods, combinable in any order:
 
 ## Things to keep in mind
 
-- **Vertical datum.** Outputs stay in DEMNAS's datum. Ground points are converted to it, so `ground.datum.target` must match the DEMNAS metadata (commonly EGM2008). A median DEM-minus-ground difference above 20 m triggers a warning: almost always a datum mismatch.
+- **Vertical datum.** Outputs stay in DEMNAS's datum. Ground points are converted to it, so `ground.datum.target` must match the DEMNAS metadata (commonly EGM2008). A median DEM-minus-ground difference above `ground.diagnostics.warn_median_m` (1 m) triggers a warning; a large one is almost always a datum mismatch.
 - **SlideRule fields.** The ATL08 and GEDI column names (`h_te_median`, `elevation_lm`, `sensitivity`) follow the SlideRule client at the time of writing. If the service changes them, the run stops ground truthing with an error naming the columns it received. You can then export points yourself and use `--ground-points`.
 - **Dates differ.** DEMNAS, WorldCover (2021) and the canopy height product come from different years. Clearing or regrowth since DEMNAS was acquired will be over- or under-corrected; the calibration step will absorb part of this.
-- **Memory.** A 50 × 50 km KHG at 8 m is about 40 million cells; expect roughly 1–2 GB of RAM. Use `--res 10` or 15 for quick runs.
+- **Memory.** A 50 × 50 km KHG at 8 m is about 40 million cells; expect roughly 1–2 GB of RAM. For larger grids use `script/tiled_dtm.py`, which keeps the full resolution.
 - **Synthetic test.** On a synthetic dome with 25 m forest canopy, the run started from deliberately wrong priors (k = 0.5 forest, 0.3 shrub). Calibration on simulated ICESat-2 tracks recovered k = 0.80 and 0.49, close to the true 0.8 and 0.5. On held-out points, RMSE went from 12.4 m (raw DEM) and 4.8 m (prior k) to 1.1 m (calibrated) and 0.4 m (smoothed). The SlideRule and PROJ downloads could not be tested from the build environment.

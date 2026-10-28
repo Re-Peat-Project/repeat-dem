@@ -1,12 +1,16 @@
 # AGENTS.md: notes for whoever picks this repo up next
 
-Last updated 2026-10-12. Read this first, then `README.md`, `docs/test-run-sebangau.md` and `docs/demnas-literature.md`.
+Last updated 2026-10-28. Read this first, then `README.md`, the LiDAR benchmark (`re-peat/reports/dem_benchmark/report.md`), `docs/test-run-sebangau.md` and `docs/demnas-literature.md`.
 
-## What this repo is, and why it is paused
+**Never downscale.** Do not coarsen, average or resample a DEM to make a run fit memory or time, and do not use a coarser `--res` for a quick or test run. Process at native resolution in strips or windows with overlap (`script/tiled_dtm.py`), blocks or parallel workers; if something still does not fit, report it. Resample only when the method needs a coarser analysis grid, keep the native copy and state the choice (workspace `AGENTS.md`).
 
-`demnas_dtm.py` turns DEMNAS into a smoothed ground surface (`dtm_smooth.tif`) for the peat water-sharing "digital twin" (see the `re-peat` repo, methodology document and `docs/08-build-plan.md`). The pipeline works end to end on three real sites (Sebangau, Mendahara, Bengkalis). The **terrain accuracy is the open blocker**: the twin needs decimetre height differences over 0.5 to 2 km, and DEMNAS alone gives metres.
+## What this repo is
 
-Work is paused until **airborne LiDAR (and ideally GNSS heights)** arrives. Until then, the twin is being built in `re-peat` against a synthetic testbed, so nothing here blocks that work. Do not spend more effort tuning k or smoothing on ICESat-2/GEDI alone; the three sites show it does not resolve the question.
+`demnas_dtm.py` turns a DEM (DEMNAS, DeltaDTM, GLO-30, FABDEM) into a calibrated, smoothed ground surface (`dtm_smooth.tif`); `script/tiled_dtm.py` runs it over a whole KHG at full resolution. In the per-KHG chain (`re-peat/tools/khg_pipeline.py`) the steps `dem_inputs` and `dem_correction` use this repo and write `01_dem/inputs/` and `01_dem/processed/<dem>/` (DeltaDTM and DEMNAS; LiDAR is used as delivered).
+
+## Status (2026-10-28)
+
+The KLHK LiDAR (25 m) arrived and the benchmark ran at Mendahara-Batanghari and Sugihan-Lumpur (`re-peat/reports/dem_benchmark/report.md`). DeltaDTM after processing came closest: error of height differences over 1 km 0.64 m and 0.47 m. DEMNAS, GLO-30 and FABDEM stayed at 1.7 to 2.5 m after processing. No source met the criterion set before the run; over 1 km the LiDAR itself changes by only 0.46 m and 0.38 m RMS. The chain therefore runs once per DEM (`lidar` where it covers the KHG, `deltadtm`, `demnas`). The sections below up to "Open questions" are the earlier record from the three DEMNAS test sites (Sebangau, Mendahara, Bengkalis).
 
 ## What we know (details in `docs/`)
 
@@ -24,7 +28,7 @@ Work is paused until **airborne LiDAR (and ideally GNSS heights)** arrives. Unti
 - **KHG-wide Kahayan–Sebangau test** (`runs/ks_full.yaml`, results in `docs/test-run-sebangau.md`): no decisive winner. With per-class offsets and smoothing, calibrated DEMNAS and FABDEM are level (about 2.1 to 2.2 m RMS over 1 to 2 km, all classes). Open and degraded peat is about 0.9 m for FABDEM and GLO-30 against 1.0 m for DEMNAS; tall forest is 2.2 to 2.7 m for all; mangrove favours FABDEM. FABDEM and GLO-30 are wall-to-wall, while the DEMNAS tile supplied has gaps over the KHG. Satellite surfaces will not resolve a 0.3 m block step; for Kahayan–Sebangau use FABDEM or GLO-30 as the dome-scale base surface (class offsets from ICESat-2), mapped canals and rivers as unit boundaries, and LiDAR or survey for siting.
 - The pipeline already accepts any DEM through `--dem` (EGM2008 heights, as GLO-30). To compare surfaces over a full KHG, extend the ground-point fetch rather than the windows.
 
-## Open questions the lidar should answer
+## Open questions the lidar should answer (written before the benchmark; the benchmark report answers 3 and 5)
 
 1. **Datum or DEM error?** Does DEM − lidar show the same −4 m (Sebangau open land) as DEM − ICESat-2/GEDI? If yes, it is a DEMNAS property. If lidar agrees with DEMNAS, the satellite ground heights (or the shared geoid step) are wrong.
 2. **Is the open-versus-forest height pattern real?** Lidar ground in open classes was 2 m higher than in forest, the DEM shows the reverse.
@@ -68,7 +72,6 @@ The twin must also accept heads from GNSS or levelling (canal water levels, bloc
 - Cache downloaded canopy-height windows (4 to 5 min per tile).
 - Replace the prior `k_by_class` of 0.8, or warn that it is unsupported.
 - Check Bengkalis cropland and shrubland (smoothed bias −5.2 m and −2.1 m). GEDI was tried at Mendahara and Sugihan-Lumpur on 2026-10-26 (`script/demnas_ground_filter.py`, `runs/checks/demnas_ground_filter.md`): too noisy under peat forest to calibrate with as filtered now; the DEMNAS ground filter is deferred.
-- `khg-prioritisation-module` has its own copy of `demnas_dtm.py` that has diverged (≈35,128 vs 34,710 bytes). This repo is the source; merge into one package.
 
 ## Working conventions
 
