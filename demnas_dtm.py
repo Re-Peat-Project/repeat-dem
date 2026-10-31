@@ -79,6 +79,7 @@ DEFAULTS: dict = {
             "https://dataforgood-fb-data.s3.amazonaws.com/forests/v1/"
             "alsgedi_global_v6_float/chm/{quadkey}.tif"),
         "chm_quadkey_zoom": 9,
+        "chm_local_dir": None,    # download mode: a folder of the same {quadkey}.tif tiles; a tile found there is read locally
         "chm_min_m": 2.0,         # canopy below this is treated as 0 (noise)
         "chm_max_m": 60.0,        # clip implausible heights
         "chm_fallback_m": {"10": 20.0, "95": 12.0},  # used per class if no CHM tile is found
@@ -327,6 +328,15 @@ def worldcover_tiles(bounds_ll) -> list[str]:
     return tiles
 
 
+def chm_source(c: dict, qk: str) -> tuple[str, bool]:
+    """Path and remote flag of canopy tile `qk`: the copy in corrections.chm_local_dir when it exists, else the URL.
+    Streaming a 1 m tile into a coarse grid takes minutes per tile; the local copy takes seconds."""
+    d = c.get("chm_local_dir")
+    if d and (Path(d) / f"{qk}.tif").is_file():
+        return str(Path(d) / f"{qk}.tif"), False
+    return c["chm_url"].format(quadkey=qk), True
+
+
 def chm_quadkeys(bounds_ll, zoom: int) -> list[str]:
     import mercantile
     lon0, lat0, lon1, lat1 = bounds_ll
@@ -395,8 +405,8 @@ def get_corrections(cfg: dict, grid: Grid) -> tuple[np.ndarray | None, np.ndarra
                     meta["landcover_sources"].append(url)
             log.info("Fetching canopy height tiles ...")
             for qk in chm_quadkeys(bll, int(c["chm_quadkey_zoom"])):
-                url = c["chm_url"].format(quadkey=qk)
-                if warp_into(url, chm, grid, Resampling.average, remote=True):
+                url, remote = chm_source(c, qk)
+                if warp_into(url, chm, grid, Resampling.average, remote=remote):
                     meta["chm_sources"].append(url)
     else:
         raise ValueError(f"unknown corrections.mode: {c['mode']}")

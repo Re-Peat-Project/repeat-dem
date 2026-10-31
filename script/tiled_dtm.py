@@ -111,7 +111,8 @@ def main():
                     for t in dd.worldcover_tiles(bll):
                         dd.warp_into(c["worldcover_url"].format(tile=t), lc, sg, Resampling.nearest, remote=True, nodata_override=0)
                     for qk in dd.chm_quadkeys(bll, int(c["chm_quadkey_zoom"])):
-                        dd.warp_into(c["chm_url"].format(quadkey=qk), chm, sg, Resampling.average, remote=True)
+                        src, remote = dd.chm_source(c, qk)
+                        dd.warp_into(src, chm, sg, Resampling.average, remote=remote)
                 w = Window(0, c0, grid.width, c1 - c0)
                 lo.write(np.nan_to_num(lc, nan=0).astype("uint8"), 1, window=w)
                 co.write(chm, 1, window=w)
