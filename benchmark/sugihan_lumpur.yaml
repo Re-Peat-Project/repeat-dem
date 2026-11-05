@@ -52,6 +52,8 @@ pipeline:
     deltadtm_m300_g150: 05_demnas_ground_filter/deltadtm_base_m300_g150.tif
     deltadtm_m600_g300: 05_demnas_ground_filter/deltadtm_base_m600_g300.tif
     deltadtm_m1200_g600: 05_demnas_ground_filter/deltadtm_base_m1200_g600.tif
+    # added 2026-11-04 before it ran, delineation only (--no-neraca): dome_local with DeltaDTM units (benchmark/dome_fit_deltadtm_units.yaml)
+    deltadtm_dome_local: 08_dome_fit_deltadtm_units/dome_local_30m.tif
     lidar_smoothed_m300_g150: 02_error_maps/lidar_smoothed.tif
     flat: flat
   # amended 2026-10-25 before any processed variant ran: tier 2 added, the only tier that uses the DTM spatially (its own 500 m grid)

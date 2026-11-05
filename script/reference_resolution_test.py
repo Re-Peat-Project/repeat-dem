@@ -8,7 +8,8 @@ Averages the 2 m LiDAR DTM inside KHG Pulau Padang into blocks of --block x --bl
   blocks holding more than 1 m of relief (canals, ditches, embankments);
 - what it keeps: the real height difference between block means 0.5, 1 and 2 km apart, over every pair of blocks along
   rows and columns (the same shifts as script/dem_benchmark.py).
-The LiDAR is read in windows; nothing is held at full size. Output: one CSV of named values.
+The LiDAR is read in windows; nothing is held at full size. Output: one CSV of named values, and with --write the block
+means as a GeoTIFF (used as the reference by benchmark/pulau_padang.yaml, like the 20-25 m LiDAR DEMs of the other sites).
 """
 import argparse
 import os
@@ -30,6 +31,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--block", type=int, default=12)
     ap.add_argument("--out", default=str(REPO / "runs" / "checks" / "reference_resolution_padang.csv"))
+    ap.add_argument("--write", help="also write the block means as a GeoTIFF (the 24 m reference of benchmark/pulau_padang.yaml)")
     a = ap.parse_args()
     data = Path(os.environ.get("REPEAT_DATA") or REPO.parent / "_data")
     F = a.block
@@ -58,6 +60,13 @@ def main():
                 mean[sl] = np.where(full, mu, np.nan)
                 sd[sl] = np.where(full, np.sqrt(((bb - mu[..., None]) ** 2).mean(-1)), np.nan)
                 rng[sl] = np.where(full, bb.max(-1) - bb.min(-1), np.nan)
+        tf_b = d.transform * d.transform.scale(F, F)
+    if a.write:
+        with rasterio.open(a.write, "w", driver="GTiff", width=mean.shape[1], height=mean.shape[0], count=1, dtype="float32", crs=d.crs,
+                           transform=tf_b, nodata=-9999.0, compress="deflate", tiled=True) as o:
+            o.write(np.nan_to_num(mean, nan=-9999.0), 1)
+            o.update_tags(source=LIDAR, meaning=f"mean of {F}x{F} LiDAR pixels; blocks fully inside the KHG with every pixel valid")
+        print("wrote", a.write)
     ok = np.isfinite(sd)
     rows = [("block_size_m", F * res), ("blocks_fully_inside", int(ok.sum())),
             ("within_block_sd_median_m", np.median(sd[ok])), ("within_block_sd_p90_m", np.percentile(sd[ok], 90)),

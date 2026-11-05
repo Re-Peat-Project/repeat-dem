@@ -87,7 +87,7 @@ def main():
                     with rasterio.open(f, "w", **prof) as o:
                         o.write(np.where(a.mask, -9999.0, 5.0).astype("float32"), 1)
             return str(f.resolve())
-        f = site / rel if rel.startswith(("01_", "02_", "04_", "05_")) else data / rel
+        f = site / rel if rel.startswith(tuple(f"{n:02d}_" for n in range(1, 10))) else data / rel   # benchmark step folders 01_-09_
         if not f.exists():
             sys.exit(f"{v}: {f} not found (run step 04 first?)")
         return str(f.resolve())

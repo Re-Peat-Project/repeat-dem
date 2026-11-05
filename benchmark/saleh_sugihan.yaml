@@ -1,0 +1,35 @@
+# DEM benchmark, site 3: KHG Sungai Saleh - Sungai Sugihan (Sumatera Selatan), the dated-LiDAR test.
+# Run: python script/dem_benchmark.py benchmark/saleh_sugihan.yaml, then python script/dated_lidar_check.py benchmark/dated_lidar.yaml
+# Written 2026-11-05, before any result. Same method as mendahara.yaml and sugihan_lumpur.yaml (2026-10-25); only the site
+# differs. Why this site: its LiDAR folder and catalogue entry say 2020, inside the ICESat-2 record (2019-2025), while the
+# Mendahara and Sugihan-Lumpur LiDAR appear to predate it (runs/checks/icesat2_subsidence_trend.md). The year is from the folder
+# name, not a recorded flight date. Reading and decisions: benchmark/dated_lidar.yaml.
+site: saleh_sugihan
+out: ${REPEAT_KHG}/16.02-07.01_saleh_sugihan/01_dem/benchmark
+khg: KHG Sungai Saleh - Sungai Sugihan
+boundary: [batas_khg_indonesia.gpkg, nama__khg__indonesia__2017__rev_tipologi, NAMA_KHG]
+lidar:                       # held-out reference, never used in a fit
+  path: lidar_klhk/sugihan_saleh_2020/lidar_dtm/LIDAR__KHG_Sugihan_Saleh__20m__UTM_48S.tif
+  note: KLHK LiDAR DTM 20 m, UTM 48S copy (the pipeline's file); folder says 2020; vertical datum not recorded
+landcover: dem/open/worldcover/ESA_WorldCover_10m_2021_v200_*_Map.tif
+candidates:
+  demnas:        {path: "dem/demnas_tiles/DEMNAS_*_v1.0.tif", assign_crs: "EPSG:4326", note: "BIG DEMNAS sheets, 0.27 arcsec, DSM"}
+  klhk_modelled: {path: "Peat depth and DTM/DTM_Sumatera-002/03_Sumatera Selatan/DTM_Sungai_Saleh_Sungai_Sugihan.tif", note: "BRGM/KLHK modelled DTM, 0.4 arcsec, method unknown"}
+  glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_S0[34]_00_E10[45]_00_DEM.tif", note: "Copernicus GLO-30 DSM (no E104 tiles in _data: a 0.04 deg strip on the west edge is missing)"}
+  fabdem:        {path: "dem/open/fabdem/S0[34]E10[45]_FABDEM_V1-2.tif", note: "FABDEM v1.2 (same E104 gap)"}
+  deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Saleh_Sugihan.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+metrics:
+  shifts_m: [500, 1000, 2000]
+  variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
+criterion:
+  baseline_m: 1000
+  tier_a_rms_m: 0.30
+  tier_b_fraction_of_signal: 0.5
+# Processed DeltaDTM: 04_processed/deltadtm/ is a copy of the chain run _khg/<this KHG>/01_dem/processed/deltadtm/ (2026-10-28),
+# which is the benchmark config of 2026-10-25 with land cover and canopy streamed instead of read from curated tiles. The other
+# candidates are scored as delivered only. The `processing.config` block below is read for smoothing the LiDAR alike.
+processing:
+  ground_points: icesat2/atl08_Saleh_Sugihan_2019-2025.gpkg
+  config:
+    aoi_buffer_m: 500
+    ground: {fit: {joint_intercept: true}}

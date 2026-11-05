@@ -1,0 +1,27 @@
+# Re-score the DEM benchmark on stable land, where the LiDAR is not out of date.
+# Run: python script/stable_land_rescore.py benchmark/stable_land_rescore.yaml
+# Written 2026-11-04, before any result. Reason: ICESat-2 2019-2025 shows drained land inside licences and near canals
+# sinking (Sugihan-Lumpur -5.2 cm/yr inside licences, +0.6 outside; runs/checks/icesat2_subsidence_trend.md), so the
+# LiDAR of unknown date is too high there and part of every candidate's error on drained land is real change.
+# The LiDAR is not shifted: a rate fitted on the same ICESat-2 data would make the test circular.
+sites: [benchmark/mendahara.yaml, benchmark/sugihan_lumpur.yaml]
+error_maps: 02_error_maps          # step 02/04: <candidate>[__processed]_minus_lidar.tif on the LiDAR grid
+candidates: [deltadtm, klhk_modelled, demnas, fabdem, glo30]
+states: {as_delivered: "{c}_minus_lidar.tif", processed: "{c}__processed_minus_lidar.tif"}
+canals: 00_inputs/canals.gpkg
+licences: 00_inputs/national/izin_usaha_2025.gpkg
+
+zones:                             # on the LiDAR grid; a height difference counts only if both cells are in the zone
+  all: {}
+  stable: {licence: outside, min_canal_distance_m: 1000}
+  drained: {licence_or_near_canal_m: 250}       # inside a licence, or within 250 m of a mapped canal
+baselines_m: [500, 1000, 2000]
+
+# Reading, written before any result:
+# 1. If the LiDAR's age explains part of the error, every candidate that follows present-day terrain (DeltaDTM, built
+#    from 2018+ ICESat-2) gains more on stable land than the older surfaces do. Report the change in 1 km error from
+#    `all` to `stable` per candidate; the expectation is a larger drop for DeltaDTM than for the KLHK modelled DTM.
+# 2. The ranking of candidates by processed 1 km error on stable land is reported next to the ranking on all cells.
+# 3. Tier A (1 km error <= 0.30 m) and Tier B (<= half the LiDAR's own 1 km signal in the same zone) are evaluated on
+#    stable land with the thresholds of the site configs, unchanged.
+# 4. Skill a flat surface cannot win: correlation of candidate and LiDAR height differences at 1 and 2 km per zone.

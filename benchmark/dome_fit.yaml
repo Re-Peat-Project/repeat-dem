@@ -1,0 +1,41 @@
+# Dome-shaped (constant-curvature) surfaces: does the premise hold on our LiDAR, and does a dome fit help DeltaDTM?
+# Run: python script/dome_fit.py benchmark/dome_fit.yaml
+# Written 2026-11-04, before any result. Method from research-proposal.md step 4 (Ingram 1982; Cobb et al. 2017), reduced to
+# a per-unit quadratic (constant Hessian, so constant curvature) as a first test before a regularised solver is built.
+#
+# Note written before the run: a tilted plane has zero curvature, so a curvature constraint cannot remove a planar tilt;
+# only independent edge levels (river and canal water levels) can. The `oracle_tilt` variant bounds what perfect edges
+# would give by taking the plane (offset and tilt) of each unit from the LiDAR and the curvature from DeltaDTM.
+sites: [benchmark/mendahara.yaml, benchmark/sugihan_lumpur.yaml]
+units: 02_delineation/lidar/subkhg_units.gpkg       # LiDAR sub-KHG units of the KHG work folder (same units for every surface)
+deltadtm_data: 04_processed/deltadtm/dtm_corrected.tif   # data for the fits (ICESat-2 class offsets applied, not smoothed)
+deltadtm_baseline: 04_processed/deltadtm/dtm_smooth.tif  # the pipeline surface (300/150), the bar to beat
+canals: 00_inputs/canals.gpkg
+out: 08_dome_fit
+
+grid_m: 100                  # analysis grid for dome-scale shape; LiDAR and DeltaDTM averaged onto it (native files kept)
+interior_min_canal_m: 250    # cells nearer a mapped canal get weight near_canal_weight in the fits (drained edges are out of equilibrium)
+near_canal_weight: 0.3
+min_cells: 50                # units with fewer cells with data are left as the baseline
+# Amendment 2026-11-04, after run 1 (kept as runs/checks/dome_fit_v1_interior_only.*): run 1 fitted each unit on interior
+# cells only and extended the quadratic over the whole unit; interior cells cluster in the unit centre, so the quadratic
+# blew up at the unit margins (the LiDAR's own quadratic scored 1.39 m at 2 km at Sugihan-Lumpur against 0.60 m for a flat
+# surface; residuals to +-5 m). Run 2 fits on all cells of the unit with data, near-canal cells down-weighted. Surfaces,
+# scores and decisions are unchanged.
+huber_m: 0.5
+baselines_m: [1000, 2000, 4000]
+
+# Surfaces scored against the LiDAR (100 m grid, cells inside the units):
+#   baseline     DeltaDTM processed (300/150)
+#   dome         per-unit quadratic fitted to DeltaDTM
+#   dome_local   dome + DeltaDTM residual (data minus dome) smoothed by a 300 m gaussian (keeps local form)
+#   oracle_tilt  DeltaDTM quadratic terms with the LiDAR's per-unit plane: the ceiling for perfect edge levels
+#   lidar_dome   per-unit quadratic fitted to the LiDAR itself (premise check, not a candidate)
+#
+# Reading and decisions, written before any result:
+# 1. Premise: the quadratic explains the LiDAR's dome-scale shape if the median over units of R2 (quadratic fit to LiDAR
+#    interior cells) is at least 0.5 at both sites, and the curvature is negative (dome-shaped) in most units.
+# 2. A data-only dome helps if `dome` or `dome_local` lowers the 2 km height-difference error AND does not lower the 2 km
+#    correlation against the baseline, at both sites. If so, build the regularised solver of the proposal next.
+# 3. The edge-level route is worth pursuing (finding river and canal water levels, e.g. ICESat-2 water surfaces) only if
+#    `oracle_tilt` lowers the 2 km error by at least 30% against the baseline at both sites.

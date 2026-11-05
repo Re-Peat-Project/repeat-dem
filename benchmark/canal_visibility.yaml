@@ -1,0 +1,34 @@
+# Can raw DEMNAS see the mapped canals? Visibility per canal class at Pulau Padang, against the 2 m LiDAR on the same transects.
+# Run: python script/canal_visibility.py benchmark/canal_visibility.yaml
+# Written 2026-11-05, before any result. Step 1 of the canal-detection idea in repeat-pump/docs/canal_mapping_sources.md.
+khg: KHG Pulau Padang
+canals: 00_inputs/canals.gpkg          # KHG work folder; class field below
+class_field: KET_KANAL
+landcover: dem/open/worldcover/ESA_WorldCover_10m_2021_v200_*_Map.tif   # $REPEAT_DATA; split open land / tree cover at the line
+surfaces:                              # sampled on the same transects
+  lidar_2m: {path: lidar_pulau_padang_2016/DTM_2mFloat.tif, root: data}                 # ceiling: canals as the LiDAR sees them
+  lidar_8m: {path: lidar_pulau_padang_2016/DTM_2mFloat.tif, root: data, along_mean_m: 8}  # the same, averaged to DEMNAS's cell along the transect
+  demnas_raw: {path: 01_dem/inputs/demnas.tif, root: khg}                              # raw DEMNAS clip (DSM, 0.27 arcsec), no correction
+transect:                              # as repeat-neraca/scripts/check_lidar_canal_levels.py
+  half_length_m: 150
+  step_m: 2
+  window_m: 10                         # half-width around the mapped line
+  control_m: 100                       # control windows at +-100 m
+  per_class: 600                       # segments sampled per class (random_state 0), 4 transects each (0.2/0.4/0.6/0.8 along)
+  min_segment_m: 60
+# Metrics per class, surface and land cover at the line (tree cover = WorldCover 10, open = everything else):
+#   depth_line    lowest value within the window minus the transect median (m, positive = below the land)
+#   depth_control the same at the control windows
+#   auc           P(depth_line > depth_control): 0.5 = no trough, 1 = always deeper at the line
+#   found         share of transects whose lowest point lies within the window (chance = the window's share)
+# Decision, written before any result: a class is "visible in raw DEMNAS" if auc >= 0.75 AND found >= 3 x chance, over all
+# land covers. If no class is visible, canal detection from DEMNAS is not pursued (steps 2-3 dropped). If some are, step 2 (a
+# non-ML trough filter) is tried for those classes only. The lidar_8m row separates what 8 m resolution loses from what
+# DEMNAS itself loses; it is not a decision input.
+#
+# Run record (2026-11-05, runs/checks/canal_visibility.md): no class is visible in raw DEMNAS, so steps 2-3 are dropped.
+# Raw DEMNAS auc 0.58 primary, 0.50 secondary, 0.43 tertiary (found 24% / 18% / 11%, chance 7%). Its control windows 100 m from
+# any mapped canal are already 0.77-0.96 m below the transect median (LiDAR 0.12-0.16 m): DEMNAS holds troughs about 1 m deep
+# everywhere, so canals do not stand out. For scale, the rule is strict: only primary canals in the 2 m LiDAR pass it (auc 0.80,
+# found 46%); secondary and tertiary fail even there (auc 0.72 and 0.59), partly because mapped lines miss the canal by more than
+# the 10 m window. At 8 m the LiDAR keeps primary canals (auc 0.75, found 20%) and loses the rest (auc 0.52-0.63).

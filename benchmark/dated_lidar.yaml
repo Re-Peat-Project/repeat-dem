@@ -1,0 +1,48 @@
+# Dated-LiDAR test: is the DeltaDTM error at the old-LiDAR sites partly the age of the reference?
+# Run: python script/dem_benchmark.py benchmark/saleh_sugihan.yaml; python script/dem_benchmark.py benchmark/pulau_padang.yaml
+#      python script/icesat2_subsidence_trend.py benchmark/dated_lidar.yaml
+# Written 2026-11-05, before any result. Trend parameters copied unchanged from benchmark/icesat2_subsidence_trend.yaml.
+sites: [benchmark/saleh_sugihan.yaml, benchmark/pulau_padang.yaml]
+report: icesat2_subsidence_trend_dated_lidar
+points: 04_processed/deltadtm/ground_points.gpkg
+canals: 00_inputs/canals.gpkg
+licences: 00_inputs/national/izin_usaha_2025.gpkg
+cell_m: 500
+min_dates_per_cell: 2
+min_span_years: 2.0
+seasonal: true
+huber_m: 0.5
+bootstrap: {reps: 500, seed: 42}
+groups:
+  all: {}
+  licence: [inside, outside]
+  distance_to_canal_m: [[0, 250], [250, 1000], [1000, .inf]]
+  canopy_m: [[0, 2], [2, .inf]]
+
+# Reading and decisions, written before any result. Old sites for comparison (03_metrics/criterion.csv, 2026-10-25):
+# processed DeltaDTM 1 km error 0.637 m Mendahara, 0.468 m Sugihan-Lumpur, against LiDAR 1 km signals of 0.458 and 0.380 m
+# (tier_b threshold x 2), i.e. 1.39 and 1.23 times the signal.
+# 1. Dating check (does the ICESat-2 method recover a known date?). The ICESat-2 record centres on about 2022. Where the
+#    inside-minus-outside licence trend difference is below 0, the implied years since the LiDAR should be about 2 (0-4) at
+#    Saleh-Sugihan (2020) and about 6 (4-8) at Pulau Padang (Nov 2016). If both fall in those ranges, the method is taken
+#    as validated and the Sugihan-Lumpur estimate (4.9 yr, LiDAR about 2015-2018) stands. If not, that estimate is withdrawn.
+# 2. Reference age. If the old reference explains a large part of the error, the processed DeltaDTM at Saleh-Sugihan (2020,
+#    neighbouring Sugihan-Lumpur, same landscape) should score a 1 km error at least 25% below Sugihan-Lumpur's, i.e. at most
+#    0.35 m, and its ICESat-2 minus LiDAR offset should differ by less than 0.15 m between inside and outside licences.
+#    If its 1 km error is above 0.40 m, the error is DeltaDTM's own and further DEM work should target DeltaDTM, not the
+#    reference. Between 0.35 and 0.40 m: inconclusive.
+# 3. Pulau Padang is reported as a fourth site (error and error / signal ratio) and judged by the same pre-set criterion
+#    (tier a 0.30 m, tier b half the 1 km signal); its relief (1.35 m at 1 km in 24 m blocks) is far larger than at the other
+#    sites, so its ratio is not compared with theirs.
+#
+# Run record (2026-11-05; runs/checks/icesat2_subsidence_trend_dated_lidar.md, <KHG>/01_dem/benchmark/03_metrics/criterion.csv):
+# 1. Fails. Saleh-Sugihan gives no date: only 100 usable points (11 cells) fall inside licences, and the canal contrast shows
+#    no trend difference (+0.57 cm/yr, -2.25 to +3.66). Pulau Padang gives -1.5 yr from the licence contrast (outside 4-8) and
+#    7.7 yr (5.5-10.4) from the canal contrast. By the rule above the Sugihan-Lumpur LiDAR date estimate (2015-2018) is
+#    withdrawn; the subsidence rates themselves are not affected (Pulau Padang inside licences -5.15 cm/yr, -8.39 to -2.20,
+#    close to Sugihan-Lumpur's -5.24). Pulau Padang's ICESat-2 minus LiDAR rises to +3.69 m beyond 1 km from canals against
+#    +1.87 m near them, which looks like ATL08 ground caught in dense forest rather than terrain.
+# 2. Fails toward "the error is DeltaDTM's own": processed DeltaDTM 1 km error 1.057 m at Saleh-Sugihan (> 0.40). That KHG
+#    holds mineral uplands up to about 29 m in the south; a post-hoc rescoring on peat cells only (script/peat_zone_rescore.py,
+#    not a pre-set test) gives 0.630 m, still above Sugihan-Lumpur's 0.446 m on peat, so the reading does not change.
+# 3. Pulau Padang: processed DeltaDTM 0.817 m (tier a 0.30 m, tier b 0.677 m): fails both, as at the other sites.

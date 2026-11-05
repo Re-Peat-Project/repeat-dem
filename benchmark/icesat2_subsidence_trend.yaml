@@ -1,0 +1,35 @@
+# Is the drained land still sinking? Height trend of ICESat-2 ground points 2019-2025, relative to the LiDAR.
+# Run: python script/icesat2_subsidence_trend.py benchmark/icesat2_subsidence_trend.yaml
+# Written 2026-11-04, before any result. Parameters are set once here and not tuned on the outcome.
+sites: [benchmark/mendahara.yaml, benchmark/sugihan_lumpur.yaml]
+points: 04_processed/deltadtm/ground_points.gpkg   # step 04 ICESat-2 ATL08 points, datum-corrected height H, usable split only
+canals: 00_inputs/canals.gpkg                       # in the KHG work folder
+licences: 00_inputs/national/izin_usaha_2025.gpkg
+
+# Residual r = H - LiDAR at each point. The LiDAR is one fixed surface, so it removes the topography and adds no trend of its
+# own. Points are grouped in square cells; the trend is fitted within cells (cell fixed effects: r and every regressor
+# minus its cell mean), so that years sampling different places cannot fake a trend.
+cell_m: 500
+min_dates_per_cell: 2          # distinct acquisition days
+min_span_years: 2.0            # first to last day in the cell
+seasonal: true                 # annual sine and cosine, for peat surface oscillation and wet/dry season effects
+huber_m: 0.5                   # Huber threshold of the robust fit (m); ATL08 ground heights scatter about 0.6 m NMAD here
+bootstrap: {reps: 500, seed: 42}   # resample cells with replacement for the 95% interval
+
+groups:                        # each group fitted on its own; a point belongs to the group of its own location
+  all: {}
+  licence: [inside, outside]
+  distance_to_canal_m: [[0, 250], [250, 1000], [1000, .inf]]
+  canopy_m: [[0, 2], [2, .inf]]   # Meta/WRI canopy height at the point (step 04 sample)
+
+# Reading, written before any result:
+# - Ongoing subsidence of drained land predicts a negative trend inside licences and within 250 m of canals, more
+#   negative than outside licences and beyond 1 km; supported if, at both sites, the inside-minus-outside trend difference
+#   has a 95% interval below 0.
+# - If supported, years since the LiDAR = (inside-minus-outside offset of H - LiDAR, from canal_distance_diagnostic) /
+#   (outside-minus-inside trend), reported with its interval; this assumes a constant rate, so it is an order of
+#   magnitude, not a flight date.
+# - If the trends are flat (intervals include 0) in both groups, the offset is not explained by subsidence during
+#   2019-2025, and the LiDAR is not shifted.
+# Note 2026-11-05: the years-since-LiDAR estimate failed its check against the dated LiDAR of Saleh-Sugihan (2020) and Pulau
+# Padang (2016) (benchmark/dated_lidar.yaml, decision 1), so the 4.9-5.0 yr at Sugihan-Lumpur is withdrawn. The trends stand.

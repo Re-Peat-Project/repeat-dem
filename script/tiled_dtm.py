@@ -137,7 +137,8 @@ def main():
         dem, _ = load_dem_into(cfg, sg, aoi_proj)
         lc, chm, _ = dd.get_corrections(cfg, sg)
         has_lc |= lc is not None
-        s = dd.sample_for_calibration(cfg, sg, dem, lc, chm, None, x[sel], y[sel])
+        vm = dd.vector_mask(cfg, sg)                 # mask.vectors (e.g. canals), as in the untiled run
+        s = dd.sample_for_calibration(cfg, sg, dem, lc, chm, vm, x[sel], y[sel])
         for k in keys:
             if s.get(k) is not None:
                 samp[k][sel] = s[k]
@@ -172,6 +173,9 @@ def main():
         if lc is not None:
             for cls in cfg["mask"]["landcover_classes"]:
                 excl |= lc == int(cls)
+        vm = dd.vector_mask(cfg, sg)                 # mask.vectors, as in the untiled run (demnas_dtm.process)
+        if vm is not None:
+            excl |= vm
         base = np.where(excl, np.nan, dtm)
         spikes = np.zeros(shape, bool)
         if cfg["mask"]["despike"]:

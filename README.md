@@ -80,6 +80,17 @@ The correction config is filled from `re-peat/tools/pipeline/templates/dem_corre
 | `dem_benchmark_pipeline.py benchmark/<site>.yaml [--only ...] [--no-neraca]` | Step 05: delineation and neraca air with only the DTM changed |
 | `delineation_compare_map.py benchmark/<site>.yaml <variant> ...` | Map of the step 05 sub-KHG units side by side |
 | `demnas_ground_filter.py benchmark/demnas_ground_filter.yaml` | One-shot test of a ground filter and ICESat-2/GEDI trend on DEMNAS (`runs/checks/demnas_ground_filter.md`) |
+| `canal_mask_sweep.py benchmark/canal_mask_sweep.yaml` | DeltaDTM with canal/river masks before smoothing, at five smoothing scales, scored against the LiDAR; decisions pre-registered in the config (`runs/checks/canal_mask_sweep.md`) |
+| `canal_distance_diagnostic.py benchmark/canal_mask_sweep.yaml` | ICESat-2, LiDAR and DeltaDTM differences by distance to canal, land cover, canopy height and licence (`runs/checks/canal_distance_diagnostic.md`) |
+| `icesat2_subsidence_trend.py benchmark/icesat2_subsidence_trend.yaml` | ICESat-2 height trend 2019-2025 relative to the LiDAR, within 500 m cells, by licence, canal distance and canopy (`runs/checks/icesat2_subsidence_trend.md`) |
+| `stable_land_rescore.py benchmark/stable_land_rescore.yaml` | Step 03 metrics re-scored by zone: all, stable (outside licences, >1 km from canals), drained (`runs/checks/stable_land_rescore.md`) |
+| `forest_offset.py benchmark/forest_offset.yaml` | DeltaDTM offsets per ForTy forest type and TMF clearing since the DEM epoch, fitted on ICESat-2 or the other site's LiDAR (`runs/checks/forest_offset.md`) |
+| `alos2_scene_inventory.py --khg "<KHG>"` | Open ALOS-2 ScanSAR scenes over a KHG at ASF, metadata only (`docs/alos2_scenes_<khg>.csv`); plan for the L-band subsidence pilot in `docs/alos2-pilot-plan.md` |
+| `dem_benchmark.py benchmark/saleh_sugihan.yaml`, `benchmark/pulau_padang.yaml` | Benchmark sites 3 and 4, LiDAR dated 2020 and Nov 2016; processed DeltaDTM copied from the chain run; Pulau Padang scored against 24 m block means of the 2 m LiDAR (`reference_resolution_test.py --write`). Reading rules in `benchmark/dated_lidar.yaml` |
+| `icesat2_subsidence_trend.py benchmark/dated_lidar.yaml` | The ICESat-2 trend and LiDAR-date check at the dated sites (`runs/checks/icesat2_subsidence_trend_dated_lidar.md`) |
+| `peat_zone_rescore.py` | Post-hoc: 1 km error on peat cells only (thickness >= 50 cm) at the four LiDAR sites (`runs/checks/peat_zone_rescore.md`) |
+| `canal_visibility.py benchmark/canal_visibility.yaml` | Do mapped canals show as troughs in raw DEMNAS? Transects per canal class at Pulau Padang against the 2 m LiDAR (`runs/checks/canal_visibility.md`) |
+| `dome_fit.py benchmark/dome_fit.yaml` | Constant-curvature (quadratic) surface per sub-KHG unit on a 100 m grid: premise check on the LiDAR, dome fits to DeltaDTM, perfect-edge ceiling (`runs/checks/dome_fit.md`; run 1 with interior-only fits kept as `dome_fit_v1_interior_only.*`) |
 | `check_tiling.py`, `check_load_alignment.py`, `reference_resolution_test.py` | Method checks, output in `runs/checks/` |
 | `lidar_benchmark.py`, `lidar_compare.py`, `compare_base_dem.py`, `relative_error.py` | Earlier comparisons of runs with LiDAR, GLO-30/FABDEM and ICESat-2/GEDI (outputs in `runs/`) |
 | `qgis_demnas_clip_download_helper.py` | QGIS Processing script: download and clip DEMNAS sheets from Ina-Geoportal |

@@ -1,0 +1,47 @@
+# Forest-type offsets for DeltaDTM: does a height offset per forest type (instead of per WorldCover class) bring the
+# surface closer to the LiDAR?
+# Run: python script/forest_offset.py benchmark/forest_offset.yaml
+# Written 2026-11-04, before any result. Parameters are set once here and not tuned on the LiDAR.
+sites: [benchmark/mendahara.yaml, benchmark/sugihan_lumpur.yaml]
+input: 04_processed/deltadtm/dtm_corrected.tif   # step 04: WorldCover class offsets from ICESat-2 applied, 30 m, not smoothed
+points: 04_processed/deltadtm/ground_points.gpkg # same ICESat-2 calibration / validation split as step 04 (2 km blocks)
+out: 07_forest_offset
+
+# Layers in $REPEAT_DATA (repeat_common.fetch_forest_type), {slug} as in the ICESat-2 file names.
+forty: forest_type/forty_2020_v1_{slug}.tif     # 10 m, argmax class -> share of each class per 30 m cell (average)
+tmf: forest_type/tmf_v1_2025_{slug}.tif         # ~30 m, nearest onto the 30 m grid (a categorical regrid at the same scale)
+# DeltaDTM is Copernicus DEM (TanDEM-X, Dec 2010 - Jan 2015) corrected with ICESat-2: canopy left in it is the canopy of
+# about 2012. "Cleared since the DEM": TMF forest (undisturbed or degraded) in dem_epoch, deforested or regrowing in 2020.
+dem_epoch_band: Dec2012
+now_band: Dec2020
+forty_classes: [primary, nat_regen, planted, plantation, tree_crop]   # other land is the baseline
+
+# Variants. Offsets are fitted as  surface - reference = intercept + sum(b_class * share_class) [+ b_cleared * cleared],
+# robust (Huber, 0.5 m); the correction subtracts the class terms only (a constant does not change height differences).
+variants:
+  none: {}                                                  # step 04 as is
+  forty_icesat2: {terms: [forty], fit_on: icesat2}          # usable for any KHG: ICESat-2 calibration points of the site
+  forty_tmf_icesat2: {terms: [forty, cleared], fit_on: icesat2}
+  forty_tmf_lidar_other: {terms: [forty, cleared], fit_on: lidar_other_site}   # offsets learned on the other site's LiDAR
+lidar_fit_cells: 300000       # random LiDAR-site cells for the lidar_other_site fit (seed 42)
+huber_m: 0.5
+smoothing: [300, 150]         # the pipeline default (median, gaussian), with the step 04 land-cover mask and despike
+
+# Scoring as stable_land_rescore (zones all / stable / drained on the LiDAR grid; 1 km height-difference error, 2 km
+# correlation) plus the held-out ICESat-2 validation points (NMAD of surface - ICESat-2).
+zones:
+  all: {}
+  stable: {licence: outside, min_canal_distance_m: 1000}
+  drained: {licence_or_near_canal_m: 250}
+canals: 00_inputs/canals.gpkg
+licences: 00_inputs/national/izin_usaha_2025.gpkg
+baselines_m: [1000, 2000]
+
+# Expectation and decision, written before any result:
+# - Expectation: the ICESat-2-fitted variants change little, because DeltaDTM minus ICESat-2 was already within about
+#   +-0.04 m across WorldCover classes and canal distance (runs/checks/canal_distance_diagnostic.md): a bias that ICESat-2
+#   shares cannot be fitted away with ICESat-2.
+# - Adopt an ICESat-2-fitted variant for the pipeline only if, at BOTH sites, it lowers the 1 km error on `all` and on
+#   `stable`, and raises the 1 km error on `drained` by no more than 0.01 m. If both pass, the simpler (forty_icesat2).
+# - forty_tmf_lidar_other is evidence only (two sites, LiDAR of different and unknown dates): it says whether forest-type
+#   offsets learned on one LiDAR KHG carry to another. It is not adopted from this test.

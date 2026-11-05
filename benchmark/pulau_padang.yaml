@@ -1,0 +1,34 @@
+# DEM benchmark, site 4: KHG Pulau Padang (Riau), the second dated-LiDAR test (flown Nov 2016, AGENTS.md _data table).
+# Run: python script/reference_resolution_test.py --write <REPEAT_DATA>/lidar_pulau_padang_2016/DTM_24m_blockmean.tif
+#      python script/dem_benchmark.py benchmark/pulau_padang.yaml
+# Written 2026-11-05, before any result. Same method as the other sites. The reference is the 2 m LiDAR averaged into 24 m blocks
+# (12 x 12 pixels, blocks fully inside the KHG with every pixel valid), matching the 20-25 m LiDAR DEMs of the other three sites;
+# runs/checks/reference_resolution_padang.csv shows a median within-block SD of 0.05 m, against 1.35 m of real height
+# difference between blocks 1 km apart. Reading and decisions: benchmark/dated_lidar.yaml.
+site: pulau_padang
+out: ${REPEAT_KHG}/14.10.01_pulau_padang/01_dem/benchmark
+khg: KHG Pulau Padang
+boundary: [batas_khg_indonesia.gpkg, nama__khg__indonesia__2017__rev_tipologi, NAMA_KHG]
+lidar:
+  path: lidar_pulau_padang_2016/DTM_24m_blockmean.tif
+  note: 2 m LiDAR DTM of Pulau Padang (Nov 2016, UTM 48N) as 24 m block means; vertical datum not recorded
+landcover: dem/open/worldcover/ESA_WorldCover_10m_2021_v200_*_Map.tif
+candidates:
+  demnas:        {path: "dem/demnas_tiles/DEMNAS_*_v1.0.tif", assign_crs: "EPSG:4326", note: "BIG DEMNAS sheets, 0.27 arcsec, DSM"}
+  klhk_modelled: {path: "Peat depth and DTM/DTM_Sumatera-002/RIAU/DTM_Pulau_Padang.tif", note: "BRGM/KLHK modelled DTM, method unknown"}
+  glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_N0[01]_00_E102_00_DEM.tif", note: "Copernicus GLO-30 DSM"}
+  fabdem:        {path: "dem/open/fabdem/N0[01]E102_FABDEM_V1-2.tif", note: "FABDEM v1.2"}
+  deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Pulau_Padang.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+metrics:
+  shifts_m: [500, 1000, 2000]
+  variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
+criterion:
+  baseline_m: 1000
+  tier_a_rms_m: 0.30
+  tier_b_fraction_of_signal: 0.5
+# Processed DeltaDTM: copy of the chain run (as in saleh_sugihan.yaml). Other candidates as delivered only.
+processing:
+  ground_points: icesat2/atl08_PulauPadang_2019-2025.gpkg
+  config:
+    aoi_buffer_m: 500
+    ground: {fit: {joint_intercept: true}}

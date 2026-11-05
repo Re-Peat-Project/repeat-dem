@@ -1,0 +1,45 @@
+# Canal mask and smoothing scale for DeltaDTM: does masking mapped canals before smoothing, and which smoothing scale,
+# bring the smoothed surface closer to the LiDAR?
+# Run: python script/canal_mask_sweep.py benchmark/canal_mask_sweep.yaml
+# Written 2026-11-04, before any result. Parameters are set once here and not tuned on the LiDAR.
+sites: [benchmark/mendahara.yaml, benchmark/sugihan_lumpur.yaml]      # benchmark configs: KHG, LiDAR, out folder
+input: 04_processed/deltadtm/dtm_corrected.tif   # step 04 DeltaDTM: ICESat-2 class offsets applied, 30 m, not smoothed
+out: 06_canal_mask_sweep                          # under the benchmark folder of each KHG
+
+# Vectors from the KHG work folder (00_inputs, clipped by the local_inputs step). Canal class from KODE_KANAL:
+# 1 primary, 2 secondary, 3 tertiary. Rasterised as demnas_dtm.vector_mask does (cell centre inside the buffer), so a
+# winning variant carries over to the pipeline config unchanged.
+canals: 00_inputs/canals.gpkg
+rivers: 00_inputs/rivers.gpkg
+masks:
+  none: []
+  all_15: [{layer: canals, buffer_m: 15}]                       # the README example value
+  all_30: [{layer: canals, buffer_m: 30}]
+  all_60: [{layer: canals, buffer_m: 60}]
+  ps_30: [{layer: canals, classes: ["1", "2"], buffer_m: 30}]   # primary and secondary only; tertiary drains are sub-pixel
+  all_30_rivers_60: [{layer: canals, buffer_m: 30}, {layer: rivers, buffer_m: 60}]
+
+# Smoothing: median window, then gaussian sigma (m), as the repeat-dem chain. 300/150 is the current default.
+smoothing: [[150, 75], [300, 150], [450, 225], [600, 300], [1200, 600]]
+
+# Scoring against the LiDAR (never used in a fit), on the LiDAR grid inside the KHG:
+#  - error of height differences (rms of the difference between candidate and LiDAR height differences) over these
+#    baselines, on all cells and on land cells (LiDAR cells farther than land_min_dist_m from any mapped canal or river:
+#    the masked surface deliberately does not follow canal cuts, so it is judged on the land it is meant to describe);
+#  - correlation of candidate and LiDAR height differences over the same baselines (does the surface get the direction
+#    of slope right; a flat surface scores 0);
+#  - canal bias: median of (candidate - LiDAR) in distance bands from the nearest mapped canal, minus the median over
+#    all cells (a negative value near canals = the surface is pulled down there).
+baselines_m: [500, 1000, 2000, 4000]
+land_min_dist_m: 100
+distance_bands_m: [0, 50, 100, 250, 500, 1000]
+
+# Decisions (written before any result):
+# 1. Canal mask. At 300/150, a mask variant is adopted for the pipeline (re-peat/tools/pipeline/templates/
+#    dem_correction_deltadtm.yaml, mask.vectors) only if, at BOTH sites, it lowers the land-cell 1 km error AND brings the
+#    0-50 m canal bias closer to 0 than `none`. If several pass, the one with the lowest mean land-cell 1 km error over
+#    the two sites. Otherwise the template stays without a mask and the result is recorded.
+# 2. Smoothing. Heavier smoothing lowers the 1 km error toward the flat-surface value by itself, so the 1 km error alone
+#    cannot choose the scale. A scale replaces 300/150 only if, at BOTH sites and with the adopted mask, it lowers the
+#    land-cell 1 km error AND does not lower the 2 km height-difference correlation. Any change of scale is then checked
+#    on the sub-KHG delineation (step 05 IoU at Sugihan-Lumpur) before it goes into the template.

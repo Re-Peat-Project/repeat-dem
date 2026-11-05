@@ -1,0 +1,34 @@
+# Dome fit with the pipeline's own units: rerun of benchmark/dome_fit.yaml (run 2) with the sub-KHG units delineated from
+# DeltaDTM instead of the LiDAR, plus a delineation test at Sugihan-Lumpur.
+# Run: python script/dome_fit.py benchmark/dome_fit_deltadtm_units.yaml
+#      then python script/dem_benchmark_pipeline.py benchmark/sugihan_lumpur.yaml --only deltadtm_dome_local --no-neraca
+# Written 2026-11-04, before any result. Every parameter as in dome_fit.yaml run 2; only the units and the outputs differ.
+sites: [benchmark/mendahara.yaml, benchmark/sugihan_lumpur.yaml]
+units: 02_delineation/deltadtm/subkhg_units.gpkg    # chain output: units delineated from DeltaDTM (what a KHG without LiDAR has)
+deltadtm_data: 04_processed/deltadtm/dtm_corrected.tif
+deltadtm_baseline: 04_processed/deltadtm/dtm_smooth.tif
+canals: 00_inputs/canals.gpkg
+out: 08_dome_fit_deltadtm_units
+report: dome_fit_deltadtm_units
+write_30m: true              # dome_local_30m.tif on the DeltaDTM grid, the DTM for the delineation test
+
+grid_m: 100
+interior_min_canal_m: 250
+near_canal_weight: 0.3
+min_cells: 50
+huber_m: 0.5
+baselines_m: [1000, 2000, 4000]
+
+# Decisions, written before any result:
+# 1. Terrain: `dome_local` is kept as a candidate only if, with these units, it lowers the 2 km height-difference error
+#    and does not lower the 2 km correlation against the baseline at both sites (same rule as dome_fit.yaml, decision 2).
+# 2. Delineation (Sugihan-Lumpur, the site with a step 05 set-up): sub-KHG units from dome_local_30m.tif are compared with
+#    the LiDAR units (mean best-match IoU, 05_pipeline/delineation_compare.csv). dome_local goes into the pipeline only if
+#    decision 1 holds AND its mean best-match IoU is at least 0.02 above deltadtm__processed (0.480). Otherwise it stays a
+#    recorded result and the pipeline is unchanged.
+# Run record (2026-11-05): decision 1 holds (2 km error 0.862 -> 0.817 m Mendahara, 0.583 -> 0.549 m Sugihan-Lumpur, correlation
+# up at both). Decision 2 fails: 30 units, mean best-match IoU 0.346 against 0.480 for deltadtm__processed and 0.399 for the flat
+# control (05_pipeline/delineation_compare.csv). dome_local is not adopted; the pipeline is unchanged. Cause, checked after the
+# run: the per-unit quadratics leave steps along the unit boundaries they were fitted in. On the 30 m surface at Sugihan-Lumpur
+# the median slope on boundary cells is 3.78 m/km (95th percentile 26.7) against 0.63 (2.29) for the baseline, and 0.43 m/km
+# inside units; the delineation follows the steps. A seam-free version (blended or jointly fitted surfaces) is a new test.
