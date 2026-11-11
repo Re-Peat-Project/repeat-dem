@@ -1,13 +1,15 @@
 """Clip the elevation sources of each KHG to its boundary, into its work folder: _khg/<code>_<name>/01_dem/inputs/.
 
-    python script/prepare_khg_dem.py [--khg "KHG ..." ...] [--buffer-m 0]
+    python script/prepare_khg_dem.py [--khg "KHG ..." ...] [--buffer-m 0] [--no-demnas]
 
 For every KHG work folder (default: all folders in $REPEAT_KHG, which defaults to the workspace _khg) this writes
   lidar_<source>.tif   each airborne LiDAR DTM in _data that covers part of the KHG (LIDAR below); those in NO_CLIP are
                        only listed in the manifest with their source path
   deltadtm.tif         DeltaDTM v1.1 (the per-KHG window fetched with repeat_common.gee into dem/open/deltadtm/)
   demnas.tif           DEMNAS from the BIG sheets in dem/demnas_tiles/ (repeat_common.fetch_demnas); written only when every
-                       sheet that touches the KHG is on disk, otherwise the manifest lists the missing sheets
+                       sheet that touches the KHG is on disk, otherwise the manifest lists the missing sheets. With
+                       --no-demnas (the chain's default since DEMNAS became optional, 2026-11-11) DEMNAS is not looked up
+                       at all: the sheet index is BIG's online ImageServer, which the default run should not depend on
   manifest.csv         per product: source files (with size and sha256), grid, coverage of the KHG, height range
 Each output keeps its source's own grid, CRS and data type: the source window around the KHG is cut out and cells outside
 the boundary (plus --buffer-m) are set to nodata. Nothing is reprojected or resampled. Rasters are read and written in
@@ -122,6 +124,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--khg", nargs="*")
     ap.add_argument("--buffer-m", type=float, default=0.0, help="margin around the boundary kept in the clips (default 0)")
+    ap.add_argument("--no-demnas", action="store_true", help="skip DEMNAS (no request to BIG's sheet index)")
     a = ap.parse_args()
     data = Path(os.environ.get("REPEAT_DATA") or WS / "_data")
     b = gpd.read_file(data / BOUNDARY[0], layer=BOUNDARY[1])
@@ -164,6 +167,12 @@ def main():
             record("deltadtm", [dd], clip(dd, geom, out / "deltadtm.tif"), "DeltaDTM v1.1 via Earth Engine; land below about 10 m +MSL only")
         else:
             record("deltadtm", [], None, f"missing: fetch {dd.relative_to(data).as_posix()} with repeat_common.gee")
+        if a.no_demnas:
+            (out / "demnas.tif").unlink(missing_ok=True)
+            record("demnas", [], None, "not requested (optional: run the chain with --dem demnas and TANAHAIR_LINK)")
+            pd.DataFrame(rows, columns=COLS).to_csv(out / "manifest.csv", index=False)
+            summary += rows
+            continue
         need = sheets_for(gpd.GeoSeries([geom], crs=4326).to_crs(utm).buffer(500).to_crs(4326).iloc[0])
         missing = [s for s in need if s not in sheets_on_disk]
         if missing:
