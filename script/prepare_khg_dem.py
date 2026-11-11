@@ -5,6 +5,8 @@
 For every KHG work folder (default: all folders in $REPEAT_KHG, which defaults to the workspace _khg) this writes
   lidar_<source>.tif   each airborne LiDAR DTM in _data that covers part of the KHG (LIDAR below); those in NO_CLIP are
                        only listed in the manifest with their source path
+  lidar_own_<name>.tif each GeoTIFF in _data/lidar_own/ (a user's own LiDAR DTM, heights in metres, CRS set) that covers part
+                       of the KHG; clipped and checked like the others, and the chain picks the best-covering LiDAR
   deltadtm.tif         DeltaDTM v1.1 (the per-KHG window fetched with repeat_common.gee into dem/open/deltadtm/)
   demnas.tif           DEMNAS from the BIG sheets in dem/demnas_tiles/ (repeat_common.fetch_demnas); written only when every
                        sheet that touches the KHG is on disk, otherwise the manifest lists the missing sheets. With
@@ -151,6 +153,9 @@ def main():
             print(f"{fol.name}: {product} {stats['cover_pct'] if stats else '-'}% {note}", flush=True)
 
         for name, rel in LIDAR.items():
+            if not (data / rel).is_file():          # a data folder without this LiDAR (e.g. a peer's: LiDAR is restricted)
+                (out / f"lidar_{name}.tif").unlink(missing_ok=True)
+                continue
             if name in NO_CLIP:
                 if fol.name.split("_")[0] == NO_CLIP[name]:
                     record(f"lidar_{name}", [data / rel], None, "airborne LiDAR; not clipped, use the source file")
@@ -159,6 +164,13 @@ def main():
             s = clip(data / rel, geom, out / f"lidar_{name}.tif")
             if s and s["cover_pct"] >= 1:
                 record(f"lidar_{name}", [data / rel], s, "airborne LiDAR")
+            else:
+                (out / f"lidar_{name}.tif").unlink(missing_ok=True)
+        for src in sorted((data / "lidar_own").glob("*.tif")):          # a user's own LiDAR DTMs (docs/22 of re-peat)
+            name = "own_" + khg.slug(src.stem)
+            s = clip(src, geom, out / f"lidar_{name}.tif")
+            if s and s["cover_pct"] >= 1:
+                record(f"lidar_{name}", [src], s, "airborne LiDAR (user-supplied, data/lidar_own)")
             else:
                 (out / f"lidar_{name}.tif").unlink(missing_ok=True)
         slug = "_".join(w.capitalize() for w in khg.slug(r["name"]).split("_"))
