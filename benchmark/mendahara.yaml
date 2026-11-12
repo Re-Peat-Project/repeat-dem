@@ -15,6 +15,8 @@ candidates:
   glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_S0[12]_00_E10[34]_00_DEM.tif", note: "Copernicus GLO-30 DSM"}
   fabdem:        {path: "dem/open/fabdem/S0[12]E10[34]_FABDEM_V1-2.tif", note: "FABDEM v1.2"}
   deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Mendahara_Batanghari.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+  # added 2026-11-12, before any GEDTM30 result; the criterion below is unchanged
+  gedtm30:       {path: "dem/open/gedtm30/gedtm30_v1.1_m_SungaiMendahara_SungaiBatanghari.tif", note: "GEDTM30 v1.1 (OpenGeoHub ensemble DTM trained on ICESat-2 and GEDI)"}   # int32 dm, band scale 0.1 applied in the VRT; EGM2008
 metrics:
   shifts_m: [500, 1000, 2000]          # height-difference error over these baselines (rows and columns, every cell)
   variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
@@ -28,9 +30,9 @@ criterion:
 # smoothing (median 300 m, gaussian 150 m). Written before any processed result (2026-10-25).
 processing:
   ground_points: icesat2/atl08_Mendahara_Batanghari_2019-2025.gpkg      # in $REPEAT_DATA, ellipsoidal heights
-  res_m: {demnas: 8, klhk_modelled: 12.37, glo30: 30, fabdem: 30, deltadtm: 30}
+  res_m: {demnas: 8, klhk_modelled: 12.37, glo30: 30, fabdem: 30, deltadtm: 30, gedtm30: 30}
   canopy: canopy/meta_chm_v1/*.tif                           # Meta/WRI canopy height tiles (repeat_common.fetch_open_dem --product chm)
-  dtm_candidates: [klhk_modelled, fabdem, deltadtm]           # prior k = 0 (bare-earth products); k still fitted
+  dtm_candidates: [klhk_modelled, fabdem, deltadtm, gedtm30]           # prior k = 0 (bare-earth products); k still fitted
   config:                                                     # merged over demnas_dtm defaults
     aoi_buffer_m: 500
     ground: {fit: {joint_intercept: true}}

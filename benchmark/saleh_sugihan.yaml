@@ -18,6 +18,8 @@ candidates:
   glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_S0[34]_00_E10[45]_00_DEM.tif", note: "Copernicus GLO-30 DSM (no E104 tiles in _data: a 0.04 deg strip on the west edge is missing)"}
   fabdem:        {path: "dem/open/fabdem/S0[34]E10[45]_FABDEM_V1-2.tif", note: "FABDEM v1.2 (same E104 gap)"}
   deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Saleh_Sugihan.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+  # added 2026-11-12, before any GEDTM30 result; the criterion below is unchanged
+  gedtm30:       {path: "dem/open/gedtm30/gedtm30_v1.1_m_SungaiSaleh_SungaiSugihan.tif", note: "GEDTM30 v1.1 (OpenGeoHub ensemble DTM trained on ICESat-2 and GEDI)"}   # int32 dm, band scale 0.1 applied in the VRT; EGM2008
 metrics:
   shifts_m: [500, 1000, 2000]
   variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
@@ -27,9 +29,13 @@ criterion:
   tier_b_fraction_of_signal: 0.5
 # Processed DeltaDTM: 04_processed/deltadtm/ is a copy of the chain run _khg/<this KHG>/01_dem/processed/deltadtm/ (2026-10-28),
 # which is the benchmark config of 2026-10-25 with land cover and canopy streamed instead of read from curated tiles. The other
-# candidates are scored as delivered only. The `processing.config` block below is read for smoothing the LiDAR alike.
+# candidates except gedtm30 are scored as delivered only. The `processing.config` block below is read for smoothing the LiDAR alike.
 processing:
   ground_points: icesat2/atl08_Saleh_Sugihan_2019-2025.gpkg
+  # gedtm30 processed here (2026-11-12, before its result) with the method of the chain run above, curated tiles
+  res_m: {gedtm30: 30}
+  canopy: canopy/meta_chm_v1/*.tif
+  dtm_candidates: [gedtm30]
   config:
     aoi_buffer_m: 500
     ground: {fit: {joint_intercept: true}}

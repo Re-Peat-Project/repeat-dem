@@ -27,7 +27,7 @@ from dem_benchmark import out_dir  # noqa: E402
 from repeat_common import khg  # noqa: E402
 
 SITES = ["mendahara", "sugihan_lumpur", "saleh_sugihan", "pulau_padang"]
-CANDIDATES = ["deltadtm__processed", "deltadtm", "klhk_modelled"]
+CANDIDATES = ["deltadtm__processed", "deltadtm", "klhk_modelled", "gedtm30__processed", "gedtm30"]
 MIN_PEAT_CM = 50
 BASELINE_M = 1000
 

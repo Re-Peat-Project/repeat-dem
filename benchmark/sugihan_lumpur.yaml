@@ -15,6 +15,8 @@ candidates:
   glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_S0[34]_00_E10[56]_00_DEM.tif", note: "Copernicus GLO-30 DSM"}
   fabdem:        {path: "dem/open/fabdem/S0[34]E10[56]_FABDEM_V1-2.tif", note: "FABDEM v1.2"}
   deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Sugihan_Lumpur.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+  # added 2026-11-12, before any GEDTM30 result; the criterion below is unchanged
+  gedtm30:       {path: "dem/open/gedtm30/gedtm30_v1.1_m_SungaiSugihan_SungaiLumpur.tif", note: "GEDTM30 v1.1 (OpenGeoHub ensemble DTM trained on ICESat-2 and GEDI)"}   # int32 dm, band scale 0.1 applied in the VRT; EGM2008
 metrics:
   shifts_m: [500, 1000, 2000]
   variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
@@ -27,9 +29,9 @@ criterion:                              # written before any result (2026-10-25)
 # smoothing (median 300 m, gaussian 150 m). Written before any processed result (2026-10-25).
 processing:
   ground_points: icesat2/atl08_Sugihan_Lumpur_2019-2025.gpkg      # in $REPEAT_DATA, ellipsoidal heights
-  res_m: {demnas: 8, klhk_modelled: 12.37, glo30: 30, fabdem: 30, deltadtm: 30}
+  res_m: {demnas: 8, klhk_modelled: 12.37, glo30: 30, fabdem: 30, deltadtm: 30, gedtm30: 30}
   canopy: canopy/meta_chm_v1/*.tif                           # Meta/WRI canopy height tiles (repeat_common.fetch_open_dem --product chm)
-  dtm_candidates: [klhk_modelled, fabdem, deltadtm]           # prior k = 0 (bare-earth products); k still fitted
+  dtm_candidates: [klhk_modelled, fabdem, deltadtm, gedtm30]           # prior k = 0 (bare-earth products); k still fitted
   config:                                                     # merged over demnas_dtm defaults
     aoi_buffer_m: 500
     ground: {fit: {joint_intercept: true}}
@@ -46,6 +48,7 @@ pipeline:
     klhk_modelled__processed: 04_processed/klhk_modelled/dtm_smooth.tif
     deltadtm__processed: 04_processed/deltadtm/dtm_smooth.tif
     demnas__processed: 04_processed/demnas/dtm_smooth.tif
+    gedtm30__processed: 04_processed/gedtm30/dtm_smooth.tif       # added 2026-11-12 before it ran, full chain (delineation and neraca)
     # added 2026-10-26 before these ran, delineation only (--no-neraca): smoothing scale (median/gaussian m) of the processed
     # DeltaDTM (step 05_demnas_ground_filter), the lidar smoothed 300/150 like the processed surfaces, and a flat control
     deltadtm_m150_g75: 05_demnas_ground_filter/deltadtm_base_m150_g75.tif

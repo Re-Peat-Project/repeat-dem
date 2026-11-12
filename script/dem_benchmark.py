@@ -65,10 +65,15 @@ def write_vrt(files, dest, assign_crs=None):
     x0 = min(s.bounds.left for s in srcs); x1 = max(s.bounds.right for s in srcs)
     y0 = min(s.bounds.bottom for s in srcs); y1 = max(s.bounds.top for s in srcs)
     W, H = round((x1 - x0) / a), round((y1 - y0) / -e)
-    dt = {"float32": "Float32", "float64": "Float64", "int16": "Int16", "uint8": "Byte", "uint32": "UInt32"}[srcs[0].dtypes[0]]
+    dt = {"float32": "Float32", "float64": "Float64", "int16": "Int16", "int32": "Int32", "uint8": "Byte", "uint32": "UInt32"}[srcs[0].dtypes[0]]
     nod = srcs[0].nodata
+    # Integer sources with a band scale (GEDTM30: decimetres, scale 0.1): readers do not apply band scales, so the VRT
+    # applies it (ScaleRatio/ScaleOffset) and serves Float32 metres, each source masking its own nodata first.
+    scaled = any((s.scales[0], s.offsets[0]) != (1.0, 0.0) for s in srcs)
+    if scaled:
+        dt = "Float32"
     # Sheets with different nodata values (DEMNAS: none, NaN, 1.18e-38, -3.0): each source masks its own, the gaps stay NaN.
-    mixed = len({repr(s.nodata) for s in srcs}) > 1 and dt.startswith("Float")
+    mixed = scaled or (len({repr(s.nodata) for s in srcs}) > 1 and dt.startswith("Float"))
     parts = [f'<VRTDataset rasterXSize="{W}" rasterYSize="{H}">', f"<SRS>{escape(crs.to_wkt())}</SRS>",
              f"<GeoTransform>{x0!r}, {a!r}, 0, {y1!r}, 0, {e!r}</GeoTransform>", f'<VRTRasterBand dataType="{dt}" band="1">']
     if mixed:
@@ -79,6 +84,8 @@ def write_vrt(files, dest, assign_crs=None):
         xo, yo = round((s.bounds.left - x0) / a), round((y1 - s.bounds.top) / -e)
         kind = "ComplexSource" if mixed else "SimpleSource"
         own = f"<NODATA>{s.nodata!r}</NODATA>" if mixed and s.nodata is not None and not np.isnan(s.nodata) else ""
+        if scaled:
+            own += f"<ScaleOffset>{s.offsets[0]!r}</ScaleOffset><ScaleRatio>{s.scales[0]!r}</ScaleRatio>"
         parts.append(f'<{kind}><SourceFilename relativeToVRT="0">{escape(str(Path(f).resolve()))}</SourceFilename>'
                      f"<SourceBand>1</SourceBand><SrcRect xOff=\"0\" yOff=\"0\" xSize=\"{s.width}\" ySize=\"{s.height}\"/>"
                      f'<DstRect xOff="{xo}" yOff="{yo}" xSize="{s.width}" ySize="{s.height}"/>{own}</{kind}>')

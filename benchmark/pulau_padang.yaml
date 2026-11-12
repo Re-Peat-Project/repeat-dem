@@ -19,6 +19,8 @@ candidates:
   glo30:         {path: "dem/open/glo30/Copernicus_DSM_COG_10_N0[01]_00_E102_00_DEM.tif", note: "Copernicus GLO-30 DSM"}
   fabdem:        {path: "dem/open/fabdem/N0[01]E102_FABDEM_V1-2.tif", note: "FABDEM v1.2"}
   deltadtm:      {path: "dem/open/deltadtm/deltadtm_v1-1_Pulau_Padang.tif", note: "DeltaDTM v1.1 (land below ~10 m +MSL)"}
+  # added 2026-11-12, before any GEDTM30 result; the criterion below is unchanged
+  gedtm30:       {path: "dem/open/gedtm30/gedtm30_v1.1_m_PulauPadang.tif", note: "GEDTM30 v1.1 (OpenGeoHub ensemble DTM trained on ICESat-2 and GEDI)"}   # int32 dm, band scale 0.1 applied in the VRT; EGM2008
 metrics:
   shifts_m: [500, 1000, 2000]
   variogram_lags_m: [100, 250, 500, 1000, 2000, 4000, 8000]
@@ -26,9 +28,13 @@ criterion:
   baseline_m: 1000
   tier_a_rms_m: 0.30
   tier_b_fraction_of_signal: 0.5
-# Processed DeltaDTM: copy of the chain run (as in saleh_sugihan.yaml). Other candidates as delivered only.
+# Processed DeltaDTM: copy of the chain run (as in saleh_sugihan.yaml). Other candidates except gedtm30 as delivered only.
 processing:
   ground_points: icesat2/atl08_PulauPadang_2019-2025.gpkg
+  # gedtm30 processed here (2026-11-12, before its result) with the method of the chain run above, curated tiles
+  res_m: {gedtm30: 30}
+  canopy: canopy/meta_chm_v1/*.tif
+  dtm_candidates: [gedtm30]
   config:
     aoi_buffer_m: 500
     ground: {fit: {joint_intercept: true}}
