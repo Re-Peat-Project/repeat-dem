@@ -10,7 +10,7 @@ now - LiDAR) at points with canopy below 2 m. The canopy height is the Meta/WRI 
 The LiDAR only judges the points here; nothing is fitted to it.
 
 Variants, fixed 2026-11-13 before any result (filters from the literature: Cobb et al. 2023, Science of Remote Sensing 7:100074;
-Liu et al. 2021, RSE 264:112571; Urbazaev et al. 2022, Science of Remote Sensing 6:100067):
+doi:10.1016/j.rse.2021.112571; doi:10.1016/j.srs.2022.100067; see docs/icesat2-ground-points-canopy.md):
   is2_now        every finite segment, as the processing uses now (the 10-photon cut was never applied, see fetch_icesat2)
   is2_photons    at least 10 ground photons per 100 m segment (the cut the fetch meant to apply)
   is2_strong_night  is2_photons, strong beams (spots 1, 3, 5) and night (solar elevation < 0)
