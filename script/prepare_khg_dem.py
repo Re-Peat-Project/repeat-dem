@@ -176,9 +176,11 @@ def main():
         slug = "_".join(w.capitalize() for w in khg.slug(r["name"]).split("_"))
         dd = data / "dem" / "open" / "deltadtm" / f"deltadtm_v1-1_{slug}.tif"
         if dd.exists():
-            record("deltadtm", [dd], clip(dd, geom, out / "deltadtm.tif"), "DeltaDTM v1.1 via Earth Engine; land below about 10 m +MSL only")
+            with rasterio.open(dd) as s:                 # the fetcher's tag: Earth Engine copy, or 4TU (repeat_common.fetch_deltadtm)
+                via = "4TU" if "4TU" in s.tags().get("source", "") else "Earth Engine"
+            record("deltadtm", [dd], clip(dd, geom, out / "deltadtm.tif"), f"DeltaDTM v1.1 via {via}; land below about 10 m +MSL only")
         else:
-            record("deltadtm", [], None, f"missing: fetch {dd.relative_to(data).as_posix()} with repeat_common.gee")
+            record("deltadtm", [], None, f"missing: fetch {dd.relative_to(data).as_posix()} with repeat_common.fetch_deltadtm")
         if a.no_demnas:
             (out / "demnas.tif").unlink(missing_ok=True)
             record("demnas", [], None, "not requested (optional: run the chain with --dem demnas and TANAHAIR_LINK)")
